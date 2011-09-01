@@ -6,44 +6,54 @@ from shutil import move
 
 class Config(RawConfigParser):
     """Simple configuration class based on RawConfigParser which will
-    load the config file and create one if it doesnt exist"""
-    _DEFAULT = """
-    [general]
-    basepath = /home/leigh/testdir
-    commit = false
+    load the config file and create one if it doesnt exist.
 
-    [tv]
-    path=TV
-    sorted=true
-    rx1=(?P<name>.+?).S\d{1,2}E\d{1,2}
-    rx2=(?P<name>.+?).\d{1,2}X\d{2}
-    
-    [xvid]
-    path=XVID
-    sorted=false
-    rx1=(?P<name>^.+?[12]\d{3}).+?(dvd|bd)rip.+?Xvid
+    It will also parse out the regex values into proper compiled regex
+    instances."""
+    _DEFAULT = """[general]
+basepath = /home/leigh/testdir
+commit = false
 
-    [xxx]
-    path=XXX
-    sorted=false
-    rx1=.+?\.XXX\.
-    """
+[tv]
+path=TV
+sorted=true
+rx1=(?P<name>.+?).S\d{1,2}E\d{1,2}
+rx2=(?P<name>.+?).\d{1,2}X\d{2}
+
+[xvid]
+path=XVID
+sorted=false
+rx1=(?P<name>^.+?[12]\d{3}).+?(dvd|bd)rip.+?Xvid
+
+[xxx]
+path=XXX
+sorted=false
+rx1=.+?\.XXX\.
+
+[dvdr]
+path=DVDR
+sorted=false
+rx1=.+?(PAL|NTSC).DVDR
+"""
     
-    def __init__(self):
+    def __init__(self, configPath="~/.msort.conf"):
         """Load and/or create the config file"""
         RawConfigParser.__init__(self)
-        confPath = expanduser("~/.msort.conf")
-        if not exists(confPath):
-            with open(confPath, 'w') as f:
+        self.confPath = expanduser(configPath)
+        if not exists(self.confPath):
+            with open(self.confPath, 'w') as f:
                 f.write(self._DEFAULT)
-                print("Wrote default config file to {0}".format(confPath))
-        self.read(confPath)
+                print("Wrote default config file to {0}".format(self.confPath))
+        self.read(self.confPath)
         self._rules = self.parseRules()
 
     def getRules(self):
+        """ Return the list of rules that have been loaded """
         return self._rules
 
-    def parseRules(self):
+    def parseRules(self, quiet=False):
+        """ Parse the raw configuration options into nicely formatted
+        dict's for simple usage. """
         conf = []
         for section in self.filteredSections():
             config = {
@@ -53,10 +63,13 @@ class Config(RawConfigParser):
                 'rx'     : self.getSectionRegex(section)
             }
             conf.append(config)
-            print("Parsed {0} configuration. {1} regexs.".format(section, len(config['rx'])))
+            if not quiet:
+                print("Parsed {0} configuration. {1} regexs.".format(section, len(config['rx'])))
         return conf
 
     def getSectionRegex(self, section):
+        """ Build and return a lsit of the regex fields under a given
+        section """
         regexList = []
         if self.has_section(section):
             for item, value in list(filter(lambda i: i[0].startswith('rx'), self.items(section))):
@@ -64,12 +77,12 @@ class Config(RawConfigParser):
         return regexList
 
     def filteredSections(self):
+        """ Return a list of sections used for parsing only """
         return list(filter(lambda p: p != 'general', self.sections()))
 
 class Location:
-    """
-    Location class
-    """
+    """ Define a location to use, optionally validating it on
+    instantiation """
     def __init__(self, path, validate=True):
         if validate and not exists(path):
             raise IOError('Invalid path specified: {0}'.format(path))
@@ -94,9 +107,10 @@ class MSorter:
     """
     Media sorting class
     """
-
     def __init__(self, location=None, config=None):
-        if location: self.setBasePath(location)
+        """ Initialize the base path and the configuration values """
+        if location:
+            self.setBasePath(location)
         if config:
             self.config = config
         else:
@@ -135,11 +149,10 @@ class MSorter:
         """
         return "{0}/{1}".format(self.basePath, filename)
 
-    def findParentDir(self, path, dest=None):
+    def findParentDir(self, path, dest=None, mtype=None):
         """
         Find the parent path of the media folder supplied
         """
-        mtype = None
         for rule in self.rules:
             for rx in rule['rx']:
                 match = rx.search(path)
@@ -181,7 +194,12 @@ class MSorter:
         else:
             return False, False
 
+    def move(self, src, dest):
+        """ Move a release to a new destination """
+        move(src, dest)
+        
     def getReleaseFiles(self, folder):
+        """ Get a list of files within the releases folder """
         filelist = []
         for root, dirs, files in walk(folder):
             #print root
@@ -206,4 +224,6 @@ class MSorter:
 
 
 def parse_path(path):
+    """ Parse a path into seperate pieces
+    This probably doesnt work very well under windows?"""
     return normpath(abspath(path)).split(sep)[1:]

@@ -1,9 +1,25 @@
-from os import mkdir
+from os import mkdir, remove
 from os.path import exists, join
 from shutil import rmtree
 import unittest
 
 import msort
+
+class ConfigTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.conf = msort.Config('~/.msort.test.conf')
+
+    def testRegex(self):
+        self.conf.getRules()
+
+    def testParseRules(self):
+        self.assertEqual(len(self.conf.sections()) - 1,
+                         len(self.conf.parseRules(True)))
+
+    @classmethod
+    def tearDownClass(cls):
+        remove(cls.conf.confPath)
 
 class TestLocation(unittest.TestCase):
     def setUp(self):
@@ -25,9 +41,6 @@ class TestMSorter(unittest.TestCase):
         dirs = [
             'TestFolder',
             'Entourage.S08E06.HDTV.Custom.HebSub.XviD-Extinct',
-            'Entourage.S08E06.HDTV.Custom.HebSub.XviD-Extinct/.incomplete',
-            'Entourage.S08E06.HDTV.Custom.HebSub.XviD-Extinct/Blah.rar',
-            'Entourage.S08E06.HDTV.Custom.HebSub.XviD-Extinct/Blah.nfo',
             'Bridezillas.S08E12.DSR.XviD-OMiCRON',
             'Not.Another.Not.Another.Movie.2011.HDRip.XVID.AC3.HQ.Hive-CM8',
             'History.of.ECW.1997.11.04.PDTV.XviD-W4F',
@@ -48,19 +61,20 @@ class TestMSorter(unittest.TestCase):
             except Exception as err:
                 pass
         cls._location = msort.Location(cls._dir)
-        cls._msort = msort.MSorter(cls._location)
+        cls._conf = msort.Config('~/.msort.test.conf')
+        cls._msort = msort.MSorter(cls._location, config=cls._conf)
 
     @classmethod
     def tearDownClass(cls):
         rmtree(cls._dir)
+        remove(cls._conf.confPath)
         
     def testBasePath(self):
         self._msort.setBasePath(msort.Location(self._dir))
         self.assertEqual(self._location.path, self._dir)
         
     def testGenPath(self):
-        p = self._msort._genPath('Test.Path')
-        self.assertEqual(p, join('testdir', 'Test.Path'))
+        self.assertEqual(self._msort._genPath('Test.Path'), join('testdir', 'Test.Path'))
         
     def testTV1(self):
         mtype, dest = self._msort.findParentDir('Entourage.S08E06.HDTV.Custom.HebSub.XviD-Extinct')
@@ -81,6 +95,11 @@ class TestMSorter(unittest.TestCase):
         mtype, dest = self._msort.findParentDir('Deep.Anal.Drilling.3.XXX.DVDRip.XviD-Jiggly')
         self.assertEqual(dest, join(self._dir,'XXX'))
         self.assertEqual(mtype, 'xxx')
+
+    def testDVDR1(self):
+        mtype, dest = self._msort.findParentDir('Feed.The.Fish.LIMITED.R2.PAL.DVDR-TARGET')
+        self.assertEqual(dest, join(self._dir,'DVDR'))
+        self.assertEqual(mtype, 'dvdr')
 
     def testFail1(self):
         mtype, dest = self._msort.findParentDir('asdfasdfasd.fas.fas.fas.fasf-asdf')
