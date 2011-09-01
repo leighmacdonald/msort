@@ -1,13 +1,75 @@
 import re
 from os import listdir, mkdir, walk, sep
-from os.path import exists, join, normpath, abspath
+from os.path import exists, join, normpath, abspath, expanduser
+from configparser import RawConfigParser
 from shutil import move
+
+class Config(RawConfigParser):
+    """Simple configuration class based on RawConfigParser which will
+    load the config file and create one if it doesnt exist"""
+    _DEFAULT = """
+    [general]
+    basepath = /home/leigh/testdir
+    commit = false
+
+    [tv]
+    path=TV
+    sorted=true
+    rx1=(?P<name>.+?).S\d{1,2}E\d{1,2}
+    rx2=(?P<name>.+?).\d{1,2}X\d{2}
+    
+    [xvid]
+    path=XVID
+    sorted=false
+    rx1=(?P<name>^.+?[12]\d{3}).+?(dvd|bd)rip.+?Xvid
+
+    [xxx]
+    path=XXX
+    sorted=false
+    rx1=.+?\.XXX\.
+    """
+    
+    def __init__(self):
+        """Load and/or create the config file"""
+        RawConfigParser.__init__(self)
+        confPath = expanduser("~/.msort.conf")
+        if not exists(confPath):
+            with open(confPath, 'w') as f:
+                f.write(self._DEFAULT)
+                print("Wrote default config file to {0}".format(confPath))
+        self.read(confPath)
+        self._rules = self.parseRules()
+
+    def getRules(self):
+        return self._rules
+
+    def parseRules(self):
+        conf = []
+        for section in self.filteredSections():
+            config = {
+                'name'   : section,
+                'path'   : self.get(section, 'path'),
+                'sorted' : self.getboolean(section, 'sorted'),
+                'rx'     : self.getSectionRegex(section)
+            }
+            conf.append(config)
+            print("Parsed {0} configuration. {1} regexs.".format(section, len(config['rx'])))
+        return conf
+
+    def getSectionRegex(self, section):
+        regexList = []
+        if self.has_section(section):
+            for item, value in list(filter(lambda i: i[0].startswith('rx'), self.items(section))):
+                regexList.append(re.compile(value, re.IGNORECASE))
+        return regexList
+
+    def filteredSections(self):
+        return list(filter(lambda p: p != 'general', self.sections()))
 
 class Location:
     """
     Location class
     """
-
     def __init__(self, path, validate=True):
         if validate and not exists(path):
             raise IOError('Invalid path specified: {0}'.format(path))
@@ -22,7 +84,7 @@ class Location:
 
     def __str__(self):
         """
-        Return the current path as a string prepresentation
+        Return the current path as a string representation
         """
         return self._path
 
@@ -32,23 +94,14 @@ class MSorter:
     """
     Media sorting class
     """
-    rules = [
-            {'name' : 'tv',
-              'rx' : [ re.compile(r"""(?P<name>.+?).S\d{1,2}E\d{1,2}""", re.IGNORECASE),
-                       re.compile(r"""(?P<name>.+?).\d{1,2}X\d{2}""", re.IGNORECASE)],
-              'path' : 'TV',
-              'sorted' : True},
-            {'name' : 'xvid',
-             'rx' : [re.compile(r"""(?P<name>^.+?[12]\d{3}).+?(dvd|bd)rip.+?Xvid""", re.IGNORECASE)],
-             'path' : 'XVID',
-             'sorted' : False},
-            {'name'  : 'xxx',
-             'rx' : [re.compile(r""".+?\.XXX\.""", re.IGNORECASE)],
-             'path' : 'XXX',
-             'sorted' : False}]
-    
-    def __init__(self, location=None):
+
+    def __init__(self, location=None, config=None):
         if location: self.setBasePath(location)
+        if config:
+            self.config = config
+        else:
+            self.config = Config()
+        self.rules = self.config.getRules()
 
     def setBasePath(self, path):
         """
