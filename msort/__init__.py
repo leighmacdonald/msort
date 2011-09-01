@@ -1,7 +1,6 @@
-import fcntlmodule as fcntl
 import re
-from os import listdir, mkdir, walk
-from os.path import exists, join
+from os import listdir, mkdir, walk, sep
+from os.path import exists, join, normpath, abspath
 from shutil import move
 
 class Location:
@@ -33,8 +32,20 @@ class MSorter:
     """
     Media sorting class
     """
-    newPattern = re.compile(r"""S\d{1,2}E\d{1,2}""", re.IGNORECASE)
-    tvPattern  = re.compile(r"""(?P<name>.+?).S\d{1,2}E\d{1,2}""", re.IGNORECASE)
+    rules = [
+            {'name' : 'tv',
+              'rx' : [ re.compile(r"""(?P<name>.+?).S\d{1,2}E\d{1,2}""", re.IGNORECASE),
+                       re.compile(r"""(?P<name>.+?).\d{1,2}X\d{2}""", re.IGNORECASE)],
+              'path' : 'TV',
+              'sorted' : True},
+            {'name' : 'xvid',
+             'rx' : [re.compile(r"""(?P<name>^.+?[12]\d{3}).+?(dvd|bd)rip.+?Xvid""", re.IGNORECASE)],
+             'path' : 'XVID',
+             'sorted' : False},
+            {'name'  : 'xxx',
+             'rx' : [re.compile(r""".+?\.XXX\.""", re.IGNORECASE)],
+             'path' : 'XXX',
+             'sorted' : False}]
     
     def __init__(self, location=None):
         if location: self.setBasePath(location)
@@ -52,13 +63,6 @@ class MSorter:
         self._fileList = listdir(self.basePath.path)
         return self._fileList
 
-    def sort(self):
-        """
-        Perform the actual act
-        """
-        if not self._fileList:
-            raise AssertionError("No file list to work on")
-
     def isNew(self, file):
         """
         Do a "new check" on the given file. Currently just looks for "SNNENN"
@@ -70,7 +74,7 @@ class MSorter:
         Find any files that look "new", this means unsorted, not
         necessarily new files.
         """
-        return filter(self.isNew, releases)
+        return releases #list(filter(self.isNew, releases))
 
     def _genPath(self, filename):
         """
@@ -82,23 +86,47 @@ class MSorter:
         """
         Find the parent path of the media folder supplied
         """
-        tv = self.tvPattern.search(path)
-        if tv:
-            dest = tv.groupdict()['name']
-
+        mtype = None
+        for rule in self.rules:
+            for rx in rule['rx']:
+                match = rx.search(path)
+                if match:
+                    if not rule['sorted']:
+                        dest = rule['path']
+                    else:
+                        dest  = join(rule['path'],match.groupdict()['name'])
+                    mtype = rule['name']
+                    print("Matched {0} -> {1}".format(rule['name'], path))
+                    break
         if dest:
             destpath = self._genPath(dest)
             if not exists(destpath):
-                mkdir(destpath)
-                print "Created dir: {0}".format(destpath)
-            #return "{0} -> {1}".format(self._genPath(path), destpath)
+                pcs = parse_path(destpath)
+                for i, v in enumerate(pcs):
+                    try:
+                        d = "{0}{1}".format(sep, sep.join(pcs[:i+1]))
+                        mkdir(d)
+                    except OSError as err:
+                        if err.args[0] == 17:
+                            pass
+                        else:
+                            raise
+                #mkdir(destpath)
+                print(("Created dir: {0}".format(destpath)))
+                #return "{0} -> {1}".format(self._genPath(path), destpath)
             #move(self._genPath(path), destpath)
-            files = self.getReleaseFiles(self._genPath(path))
-            print files
+            releasePath = self._genPath(path)
+            files = self.getReleaseFiles(releasePath)
+            #print(files)
             if any(map(self.isLocked, files)):
-                print "LOCKED!"
+                print("LOCKED!")
+                dest = False
             else:
-                print "{0} -> {1}".format(self._genPath(path), destpath)
+                print(("{0} -> {1}".format(self._genPath(path), destpath)))
+                dest = destpath
+            return mtype, dest
+        else:
+            return False, False
 
     def getReleaseFiles(self, folder):
         filelist = []
@@ -119,6 +147,10 @@ class MSorter:
             if file:
                 return False
             return True
-        except IOError, err:
-            print err
+        except IOError as err:
+            print(err)
             return True
+
+
+def parse_path(path):
+    return normpath(abspath(path)).split(sep)[1:]
