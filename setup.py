@@ -1,4 +1,4 @@
-#!/bin/env python
+#!/bin/env python3
 """
 Author: Leigh MacDonald <leigh.macdonald@gmail.com>
 """

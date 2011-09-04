@@ -1,8 +1,27 @@
 import re
+from sys import exit
 from os import listdir, mkdir, walk, sep
-from os.path import exists, join, normpath, abspath, expanduser
+from os.path import exists, join, normpath, abspath, expanduser, isdir
 from configparser import RawConfigParser
 from shutil import move
+import logging
+
+# Make a global logging object.
+log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
+h = logging.StreamHandler()
+f = logging.Formatter("%(levelname)s %(message)s")
+h.setFormatter(f)
+log.addHandler(h)
+
+class ChangeSet:
+    def __init__(self, source, dest):
+        self.source = source
+        self.dest = dest
+
+    def move(self):
+        move(self.source, self.dest)
+
 
 class Config(RawConfigParser):
     """Simple configuration class based on RawConfigParser which will
@@ -11,8 +30,11 @@ class Config(RawConfigParser):
     It will also parse out the regex values into proper compiled regex
     instances."""
     _DEFAULT = """[general]
-basepath = /home/leigh/testdir
+basepath = /mnt/storage
 commit = false
+lock_enabled = true
+lock_pattern = ^\.(incomplete|lock|locked)
+new_pattern  = ^(.+?\.){2,}.+?-(.*)$
 
 [tv]
 path=TV
@@ -25,15 +47,15 @@ path=XVID
 sorted=false
 rx1=(?P<name>^.+?[12]\d{3}).+?(dvd|bd)rip.+?Xvid
 
-[xxx]
-path=XXX
-sorted=false
-rx1=.+?\.XXX\.
-
 [dvdr]
 path=DVDR
 sorted=false
 rx1=.+?(PAL|NTSC).DVDR
+
+[xxx]
+path=XXX
+sorted=false
+rx1=.+?\.XXX\.
 """
     
     def __init__(self, configPath="~/.msort.conf"):
@@ -43,7 +65,7 @@ rx1=.+?(PAL|NTSC).DVDR
         if not exists(self.confPath):
             with open(self.confPath, 'w') as f:
                 f.write(self._DEFAULT)
-                print("Wrote default config file to {0}".format(self.confPath))
+                log.info("Wrote default config file to {0}".format(self.confPath))
         self.read(self.confPath)
         self._rules = self.parseRules()
 
@@ -64,7 +86,7 @@ rx1=.+?(PAL|NTSC).DVDR
             }
             conf.append(config)
             if not quiet:
-                print("Parsed {0} configuration. {1} regexs.".format(section, len(config['rx'])))
+                log.info("Parsed {0} configuration. {1} regexs.".format(section, len(config['rx'])))
         return conf
 
     def getSectionRegex(self, section):
@@ -95,6 +117,9 @@ class Location:
         """
         return self._path
 
+    def exists(self):
+        return exists(self._path)
+
     def __str__(self):
         """
         Return the current path as a string representation
@@ -109,14 +134,36 @@ class MSorter:
     """
     def __init__(self, location=None, config=None):
         """ Initialize the base path and the configuration values """
-        if location:
-            self.setBasePath(location)
         if config:
             self.config = config
         else:
             self.config = Config()
-        self.rules = self.config.getRules()
 
+        if location:
+            self.setBasePath(location)
+        else:
+            if self.config.has_option('general', 'basepath'):
+                path = Location(self.config.get('general', 'basepath'))
+                if path.exists():
+                    self.setBasePath(path)
+                    log.info("Set base path to: {0}".format(path))
+                else:
+                    log.fatal("Invalid basepath specified")
+                    exit(2)
+                
+        self.rules = self.config.getRules()
+        if self.rules:
+            log.info("Loaded {0} rule sections and {1} rules.".format(
+                len(self.rules),
+                sum([len(r['rx']) for r in self.rules])))
+        else:
+            log.fatal("You must define at least 1 ruleset in the config. ({0})".format(
+                self.config.confPath))
+            exit(2)
+
+        self.newPattern = re.compile(self.config.get('general', 'new_pattern'))
+
+            
     def setBasePath(self, path):
         """
         Sets the base media path everything is relative to
@@ -127,8 +174,7 @@ class MSorter:
         """
         Generate a list of files to scan through
         """
-        self._fileList = listdir(self.basePath.path)
-        return self._fileList
+        return listdir(self.basePath.path)
 
     def isNew(self, file):
         """
@@ -141,7 +187,7 @@ class MSorter:
         Find any files that look "new", this means unsorted, not
         necessarily new files.
         """
-        return releases #list(filter(self.isNew, releases))
+        return filter(self.isNew, releases)
 
     def _genPath(self, filename):
         """
@@ -157,17 +203,20 @@ class MSorter:
             for rx in rule['rx']:
                 match = rx.search(path)
                 if match:
+                    base = self.config.get('general', 'basepath')
                     if not rule['sorted']:
-                        dest = rule['path']
+                        dest = join(base, rule['path'])
                     else:
-                        dest  = join(rule['path'],match.groupdict()['name'])
+                        dest  = join(base, rule['path'], match.groupdict()['name'])
                     mtype = rule['name']
-                    print("Matched {0} -> {1}".format(rule['name'], path))
-                    break
+                    if exists(join(dest, path)):
+                        return False, False
+                    else:
+                        #print("Matched {0} -> {1}".format(rule['name'], path))
+                        break
         if dest:
-            destpath = self._genPath(dest)
-            if not exists(destpath):
-                pcs = parse_path(destpath)
+            if not exists(dest):
+                pcs = parse_path(dest)
                 for i, v in enumerate(pcs):
                     try:
                         d = "{0}{1}".format(sep, sep.join(pcs[:i+1]))
@@ -177,19 +226,16 @@ class MSorter:
                             pass
                         else:
                             raise
-                #mkdir(destpath)
-                print(("Created dir: {0}".format(destpath)))
-                #return "{0} -> {1}".format(self._genPath(path), destpath)
-            #move(self._genPath(path), destpath)
-            releasePath = self._genPath(path)
+                log.info(("Created dir: {0}".format(dest)))
+            releasePath = join(self.basePath.path, path)
             files = self.getReleaseFiles(releasePath)
             #print(files)
             if any(map(self.isLocked, files)):
-                print("LOCKED!")
-                dest = False
+                log.error("LOCKED!")
+                mtype, dest = False, False
             else:
-                print(("{0} -> {1}".format(self._genPath(path), destpath)))
-                dest = destpath
+                pass
+                #print(("{0} -> {1}".format(releasePath, dest)))
             return mtype, dest
         else:
             return False, False
@@ -205,8 +251,7 @@ class MSorter:
             #print root
             #print dirs
             #print files
-            for f in files:
-                filelist.append(join(root, f))
+            map(filelist.append, [ join(root, f) for f in files ])
         return filelist
 
     def isLocked(self, filename):
@@ -219,11 +264,10 @@ class MSorter:
                 return False
             return True
         except IOError as err:
-            print(err)
+            log.exception(err)
             return True
 
-
 def parse_path(path):
-    """ Parse a path into seperate pieces
+    """ Parse a path into separate pieces
     This probably doesnt work very well under windows?"""
     return normpath(abspath(path)).split(sep)[1:]
