@@ -1,18 +1,26 @@
-import re
+from re import compile as rxcompile, IGNORECASE
 from sys import exit
 from os import listdir, mkdir, walk, sep
-from os.path import exists, join, normpath, abspath, expanduser, isdir
+from os.path import exists, join, normpath, abspath, expanduser
 from configparser import RawConfigParser
 from shutil import move
-import logging
+from logging import getLogger, Formatter, StreamHandler, INFO
 
-# Make a global logging object.
-log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
-h = logging.StreamHandler()
-f = logging.Formatter("%(levelname)s %(message)s")
-h.setFormatter(f)
-log.addHandler(h)
+def logInit(config=None):
+    global log
+    log = getLogger(__name__)
+    if config and config.has_section('logging'):
+        # Make a global logging object.
+        level = int(config.getSafe('logging', 'level', INFO))
+        log.setLevel(level)
+        h = StreamHandler()
+        f = Formatter("%(levelname)s %(message)s")
+        h.setFormatter(f)
+        log.addHandler(h)
+    else:
+        log.setLevel(INFO)
+    return log
+log = logInit()
 
 class ChangeSet:
     def __init__(self, source, dest):
@@ -22,6 +30,10 @@ class ChangeSet:
     def move(self):
         move(self.source, self.dest)
 
+    def __str__(self):
+        return '{0} -> {1}'.format(self.source, self.dest)
+
+class ConfigError(Exception): pass
 
 class Config(RawConfigParser):
     """Simple configuration class based on RawConfigParser which will
@@ -31,10 +43,20 @@ class Config(RawConfigParser):
     instances."""
     _DEFAULT = """[general]
 basepath = /mnt/storage
-commit = false
+commit = true
 lock_enabled = true
 lock_pattern = ^\.(incomplete|lock|locked)
 new_pattern  = ^(.+?\.){2,}.+?-(.*)$
+
+[logging]
+enabled=true
+# NOTSET = 0 | DEBUG = 10 | INFO = 20 | WARN = 30 | ERROR = 40 | FATAL = 50
+level=10
+format="%(levelname)s %(message)s"
+
+[ignored]
+rx1=(.avi|.mkv)$
+rx2=(.txt|.nfo)$
 
 [tv]
 path=TV
@@ -58,14 +80,25 @@ sorted=false
 rx1=.+?\.XXX\.
 """
     
-    def __init__(self, configPath="~/.msort.conf"):
+    def __init__(self, configPath="~/.msort.conf", skip=['general', 'ignored', 'logging']):
         """Load and/or create the config file"""
         RawConfigParser.__init__(self)
+        self.skip = skip
         self.confPath = expanduser(configPath)
         if not exists(self.confPath):
-            with open(self.confPath, 'w') as f:
-                f.write(self._DEFAULT)
-                log.info("Wrote default config file to {0}".format(self.confPath))
+            try:
+                pcs = self.confPath.split(sep)
+                dirPath = pcs[:-1]
+                p = sep
+                for path in dirPath:
+                    p = join(p, path)
+                mkdirp(p)
+                with open(self.confPath, 'w') as f:
+                    f.write(self._DEFAULT)
+            except IOError as err:
+                raise ConfigError(err.strerror)
+            except OSError as err:
+                raise ConfigError('Cannot create configuration base directory {0}'.format(p))
         self.read(self.confPath)
         self._rules = self.parseRules()
 
@@ -73,20 +106,17 @@ rx1=.+?\.XXX\.
         """ Return the list of rules that have been loaded """
         return self._rules
 
-    def parseRules(self, quiet=False):
+    def parseRules(self):
         """ Parse the raw configuration options into nicely formatted
         dict's for simple usage. """
         conf = []
         for section in self.filteredSections():
-            config = {
+            conf.append({
                 'name'   : section,
                 'path'   : self.get(section, 'path'),
                 'sorted' : self.getboolean(section, 'sorted'),
                 'rx'     : self.getSectionRegex(section)
-            }
-            conf.append(config)
-            if not quiet:
-                log.info("Parsed {0} configuration. {1} regexs.".format(section, len(config['rx'])))
+            })
         return conf
 
     def getSectionRegex(self, section):
@@ -94,18 +124,25 @@ rx1=.+?\.XXX\.
         section """
         regexList = []
         if self.has_section(section):
-            for item, value in list(filter(lambda i: i[0].startswith('rx'), self.items(section))):
-                regexList.append(re.compile(value, re.IGNORECASE))
+            for item, value in filter(lambda i: i[0].startswith('rx'), self.items(section)):
+                regexList.append(rxcompile(value, IGNORECASE))
         return regexList
 
     def filteredSections(self):
         """ Return a list of sections used for parsing only """
-        return list(filter(lambda p: p != 'general', self.sections()))
+        return filter(lambda p: p not in self.skip, self.sections())
+
+    def getSafe(self, section, option, default=False):
+        if self.has_section(section) and self.has_option(section, option):
+            return self.get(section, option)
+        return default
+
 
 class Location:
     """ Define a location to use, optionally validating it on
     instantiation """
-    def __init__(self, path, validate=True):
+    def __init__(self, *paths, validate=True):
+        path = join(paths[0])
         if validate and not exists(path):
             raise IOError('Invalid path specified: {0}'.format(path))
         self._path = path
@@ -126,8 +163,6 @@ class Location:
         """
         return self._path
 
-
-    
 class MSorter:
     """
     Media sorting class
@@ -138,6 +173,7 @@ class MSorter:
             self.config = config
         else:
             self.config = Config()
+        log = logInit(self.config)
 
         if location:
             self.setBasePath(location)
@@ -150,18 +186,27 @@ class MSorter:
                 else:
                     log.fatal("Invalid basepath specified")
                     exit(2)
-                
+            else:
+                log.fatal('basepath must be defined in [general] ({0})'.format(
+                    self.config.confPath)
+                )
+                exit(2)
         self.rules = self.config.getRules()
         if self.rules:
             log.info("Loaded {0} rule sections and {1} rules.".format(
-                len(self.rules),
-                sum([len(r['rx']) for r in self.rules])))
+                len(self.rules), sum([len(r['rx']) for r in self.rules]))
+            )
         else:
             log.fatal("You must define at least 1 ruleset in the config. ({0})".format(
                 self.config.confPath))
             exit(2)
 
-        self.newPattern = re.compile(self.config.get('general', 'new_pattern'))
+        self.newPattern = rxcompile(self.config.get('general', 'new_pattern'))
+        if self.config.has_section('ignored'):
+            self.ignores = self.config.getSectionRegex('ignored')
+            log.debug('Loaded {0} ignore patterns.'.format(len(self.ignores)))
+        else:
+            log.info('No ignore patterns defined')
 
             
     def setBasePath(self, path):
@@ -176,6 +221,13 @@ class MSorter:
         """
         return listdir(self.basePath.path)
 
+    def filterIgnored(self, paths):
+        valid = []
+        for path in paths:
+            if not any([rx.search(path) for rx in self.ignores]):
+                valid.append(path)
+        return valid
+    
     def isNew(self, file):
         """
         Do a "new check" on the given file. Currently just looks for "SNNENN"
@@ -207,7 +259,7 @@ class MSorter:
                     if not rule['sorted']:
                         dest = join(base, rule['path'])
                     else:
-                        dest  = join(base, rule['path'], match.groupdict()['name'])
+                        dest = join(base, rule['path'], match.groupdict()['name'])
                     mtype = rule['name']
                     if exists(join(dest, path)):
                         return False, False
@@ -216,26 +268,14 @@ class MSorter:
                         break
         if dest:
             if not exists(dest):
-                pcs = parse_path(dest)
-                for i, v in enumerate(pcs):
-                    try:
-                        d = "{0}{1}".format(sep, sep.join(pcs[:i+1]))
-                        mkdir(d)
-                    except OSError as err:
-                        if err.args[0] == 17:
-                            pass
-                        else:
-                            raise
-                log.info(("Created dir: {0}".format(dest)))
+                mkdirp(dest)
             releasePath = join(self.basePath.path, path)
             files = self.getReleaseFiles(releasePath)
-            #print(files)
             if any(map(self.isLocked, files)):
                 log.error("LOCKED!")
                 mtype, dest = False, False
             else:
-                pass
-                #print(("{0} -> {1}".format(releasePath, dest)))
+                log.debug("Found parent of {0} : {1}".format(releasePath, dest))
             return mtype, dest
         else:
             return False, False
@@ -244,14 +284,9 @@ class MSorter:
         """ Move a release to a new destination """
         move(src, dest)
         
-    def getReleaseFiles(self, folder):
+    def getReleaseFiles(self, folder, filelist=[]):
         """ Get a list of files within the releases folder """
-        filelist = []
-        for root, dirs, files in walk(folder):
-            #print root
-            #print dirs
-            #print files
-            map(filelist.append, [ join(root, f) for f in files ])
+        [ map(filelist.append, [ join(root, f) for f in files ]) for root, dirs, files in walk(folder) ]
         return filelist
 
     def isLocked(self, filename):
@@ -271,3 +306,20 @@ def parse_path(path):
     """ Parse a path into separate pieces
     This probably doesnt work very well under windows?"""
     return normpath(abspath(path)).split(sep)[1:]
+
+def mkdirp(dest):
+    new = False
+    pcs = parse_path(dest)
+    for i, v in enumerate(pcs):
+        try:
+            d = "{0}{1}".format(sep, sep.join(pcs[:i+1]))
+            if not exists(d):
+                mkdir(d)
+                new = True
+        except OSError as err:
+            if err.args[0] == 17:
+                pass
+            else:
+                raise
+    if new:
+        log.info("Created dir: {0}".format(dest))

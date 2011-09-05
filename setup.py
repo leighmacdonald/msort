@@ -7,7 +7,7 @@ from distutils.core import setup
 
 setup(
     name='msort',
-    version='1.0',
+    version='1.1',
     description='utility for sorting scene releases into grouped subfolders',
     author='Leigh MacDonald',
     author_email='leigh@cudd.li',
