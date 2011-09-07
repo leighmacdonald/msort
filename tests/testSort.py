@@ -62,6 +62,7 @@ class TestMSorter(unittest.TestCase):
                 pass
         cls._location = msort.Location(cls._dir)
         cls._conf = msort.Config('~/.msort.test.conf')
+        cls._conf.set('general', 'basepath', cls._dir)
         cls._msort = msort.MSorter(cls._location, config=cls._conf)
 
     @classmethod
