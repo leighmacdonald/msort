@@ -2,11 +2,20 @@ from re import compile as rxcompile, IGNORECASE
 from sys import exit
 from os import listdir, mkdir, walk, sep
 from os.path import exists, join, normpath, abspath, expanduser
-from configparser import RawConfigParser
+try:
+    from configparser import RawConfigParser
+except ImportError:
+    from ConfigParser import RawConfigParser
 from shutil import move
 from logging import getLogger, Formatter, StreamHandler, INFO
 
 def logInit(config=None):
+    """Initialize the logger class
+    :param config: Config instance
+    :type config: Config
+    :return: logger instance
+    :rtype: RootLogger
+    """
     global log
     log = getLogger(__name__)
     if config and config.has_section('logging'):
@@ -23,17 +32,32 @@ def logInit(config=None):
 log = logInit()
 
 class ChangeSet:
-    def __init__(self, source, dest):
-        self.source = source
-        self.dest = dest
+    """ A simple changeset to be executed """
+    def __init__(self, src, dst, operation=move):
+        """
+        :param src: Source file/dir
+        :type src: string
+        :param dst: Destination file/dir
+        :type dst: string
+        """
+        self.source = src
+        self.dest = dst
+        if not hasattr(operation, '__call__'):
+            raise AttributeError('Operation must be callable')
+        self.oper = operation
 
-    def move(self):
-        move(self.source, self.dest)
+    def exec(self):
+        """ Execute the operation under the operation property """
+        return self.oper(self.source, self.dest)
 
     def __str__(self):
-        return '{0} -> {1}'.format(self.source, self.dest)
+        return 'mv {0} {1}'.format(self.source, self.dest)
 
-class ConfigError(Exception): pass
+class ConfigError(Exception):
+    """
+    Thrown on configuration issues
+    """
+    pass
 
 class Config(RawConfigParser):
     """Simple configuration class based on RawConfigParser which will
@@ -80,10 +104,16 @@ sorted=false
 rx1=.+?\.XXX\.
 """
     
-    def __init__(self, configPath="~/.msort.conf", skip=['general', 'ignored', 'logging']):
-        """Load and/or create the config file"""
+    def __init__(self, configPath="~/.msort.conf", skiplist=['general', 'ignored', 'logging']):
+        """ Initialize the configuration. If a existing one doesnt exit a new one will be created
+        in, by default, the users home directory, unless otherwise specified by the configPath
+        parameter
+
+        :param configPath: Location of the config file
+        :param skip: List of filtered sections to skip when parsing for rules
+        """
         RawConfigParser.__init__(self)
-        self.skip = skip
+        self.skip = skiplist
         self.confPath = expanduser(configPath)
         if not exists(self.confPath):
             try:
@@ -97,19 +127,27 @@ rx1=.+?\.XXX\.
                     f.write(self._DEFAULT)
             except IOError as err:
                 raise ConfigError(err.strerror)
-            except OSError as err:
+            except OSError:
                 raise ConfigError('Cannot create configuration base directory {0}'.format(p))
         self.read(self.confPath)
         self._rules = self.parseRules()
 
     def getRules(self):
-        """ Return the list of rules that have been loaded """
+        """Return the loaded ruleset
+
+        :return: List of rules loaded
+        :rtype: list
+        """
         return self._rules
 
     def parseRules(self):
         """ Parse the raw configuration options into nicely formatted
-        dict's for simple usage. """
-        conf = []
+        dict's for simple usage.
+
+        :return: list of option dicts
+        :rtype: list
+        """
+        conf = list()
         for section in self.filteredSections():
             conf.append({
                 'name'   : section,
@@ -120,8 +158,15 @@ rx1=.+?\.XXX\.
         return conf
 
     def getSectionRegex(self, section):
-        """ Build and return a lsit of the regex fields under a given
-        section """
+        """ Build and return a list of the regex fields for the section
+        provided. All fields starting with 'rx' are considered valid regex
+        rules to attempt to use.
+
+        :param section: Config file section name
+        :type section: string
+        :return: List of regular expressions
+        :rtype: list
+        """
         regexList = []
         if self.has_section(section):
             for item, value in filter(lambda i: i[0].startswith('rx'), self.items(section)):
@@ -129,10 +174,23 @@ rx1=.+?\.XXX\.
         return regexList
 
     def filteredSections(self):
-        """ Return a list of sections used for parsing only """
+        """ Get a list of valid ruleset sections
+
+        :return: Filtered sections
+        :rtype: filter
+        """
         return filter(lambda p: p not in self.skip, self.sections())
 
     def getSafe(self, section, option, default=False):
+        """ Get a config value providing a default value if it doesnt exist
+        
+        :param section: Config section name
+        :type section: string
+        :param option: Config option name
+        :param default: string
+        :return: config value
+        :rtype: string
+        """
         if self.has_section(section) and self.has_option(section, option):
             return self.get(section, option)
         return default
@@ -142,6 +200,13 @@ class Location:
     """ Define a location to use, optionally validating it on
     instantiation """
     def __init__(self, *paths, validate=True):
+        """ Initialize and optionally validate the path given
+        
+        :param paths: N number of paramerters to be joined into a complete path
+        :type paths: string
+        :param validate: Check the exitence of the path
+        :type validate: bool
+        """
         path = join(paths[0])
         if validate and not exists(path):
             raise IOError('Invalid path specified: {0}'.format(path))
@@ -149,12 +214,18 @@ class Location:
 
     @property
     def path(self):
-        """
-        return the current path specified
+        """ Get the current path specified
+
+        :return: Given path
+        :rtype: string
         """
         return self._path
 
     def exists(self):
+        """ Check if the current location exists
+        :return: Existence status
+        :rtype: bool
+        """
         return exists(self._path)
 
     def __str__(self):
@@ -168,7 +239,13 @@ class MSorter:
     Media sorting class
     """
     def __init__(self, location=None, config=None):
-        """ Initialize the base path and the configuration values """
+        """ Initialize the base path and the configuration values
+
+        :param location: Base sort path to look through
+        :type location: str
+        :param config: Config instance
+        :type: Config
+        """
         if config:
             self.config = config
         else:
@@ -210,18 +287,30 @@ class MSorter:
 
             
     def setBasePath(self, path):
-        """
-        Sets the base media path everything is relative to
+        """ Sets the base media path everything is relative to
+
+        :param path: Base path used for searching
+        :type path: Location
         """
         self.basePath = path
 
     def genFileList(self):
         """
         Generate a list of files to scan through
+
+        :return: File list for base directory
+        :rtype: list
         """
         return listdir(self.basePath.path)
 
     def filterIgnored(self, paths):
+        """ Remove any ignored files from the given list of files
+
+        :param paths: List of files to check
+        :type paths: list
+        :return: List of validated files
+        :rtype: list
+        """
         valid = []
         for path in paths:
             if not any([rx.search(path) for rx in self.ignores]):
@@ -229,27 +318,48 @@ class MSorter:
         return valid
     
     def isNew(self, file):
+        """ Do a "new check" on the given file. Currently just looks for "SNNENN"
+        
+        :param file: File to check
+        :type file: str
+        :return: New status
+        :rtype: bool
         """
-        Do a "new check" on the given file. Currently just looks for "SNNENN"
-        """
-        return self.newPattern.search(file)
+        return bool(self.newPattern.search(file))
 
     def findNew(self, releases):
-        """
-        Find any files that look "new", this means unsorted, not
+        """ Find any files that look "new", this means unsorted, not
         necessarily new files.
+        
+        :param releases: list of directories to look through
+        :type releases: list filter
+        :return: New files
+        :rtype: filter
         """
         return filter(self.isNew, releases)
 
     def _genPath(self, filename):
-        """
-        Generate a path from the basepath
+        """ Generate a path from the basepath
+
+        :param filename: File name
+        :type filename: str
+        :return: Full path to filename
+        :rtype: str
         """
         return "{0}/{1}".format(self.basePath, filename)
 
     def findParentDir(self, path, dest=None, mtype=None):
-        """
-        Find the parent path of the media folder supplied
+        """ Find the parent path of the media folder supplied
+
+        :param path: Base path to search from
+        :type path: str
+        :param dest: Optional default destination
+        :type dest: str
+        :param mtype: Optional default mediatype
+        :type mtype: str
+        :return: Found mediatype and destination
+        :rtype: bool, bool
+
         """
         for rule in self.rules:
             for rx in rule['rx']:
@@ -280,18 +390,25 @@ class MSorter:
         else:
             return False, False
 
-    def move(self, src, dest):
-        """ Move a release to a new destination """
-        move(src, dest)
-        
     def getReleaseFiles(self, folder, filelist=[]):
-        """ Get a list of files within the releases folder """
+        """ Get a list of files within the releases folder
+
+        :param folder: Folder to look through
+        :type folder: str
+        :param filelist: Optional list of files to append to
+        :return: files found under the folder path
+        :rtype: list
+        """
         [ map(filelist.append, [ join(root, f) for f in files ]) for root, dirs, files in walk(folder) ]
         return filelist
 
     def isLocked(self, filename):
-        """
-        Check to see if a file is in a locked state (in use)
+        """ Check to see if a file is in a locked state (in use)
+
+        :param filename: File to check
+        :type filename: str
+        :return: Locked status
+        :rtype: bool
         """
         try:
             file = open(filename, 'a+')
@@ -304,10 +421,22 @@ class MSorter:
 
 def parse_path(path):
     """ Parse a path into separate pieces
-    This probably doesnt work very well under windows?"""
+    This probably doesnt work very well under windows?
+
+    :param path: Path to parse
+    :type path: str
+    :return List of path pieces
+    :rtype: list
+    """
     return normpath(abspath(path)).split(sep)[1:]
 
 def mkdirp(dest):
+    """ Emulate 'mkdir -p'
+
+    :param dest: Path to create
+    :type dest: str
+    :raise OSError: Anything but already exists
+    """
     new = False
     pcs = parse_path(dest)
     for i, v in enumerate(pcs):
