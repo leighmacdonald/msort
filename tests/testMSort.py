@@ -1,4 +1,4 @@
-from os import mkdir, remove
+from os import mkdir, remove, rename
 from os.path import exists, join
 from shutil import rmtree
 import unittest
@@ -73,5 +73,19 @@ class TestMSorter(unittest.TestCase):
 
     def testFail1(self):
         mtype, dest = self._msort.findParentDir('asdfasdfasd.fas.fas.fas.fasf-asdf')
-        self.assertFalse(dest)
-        self.assertFalse(mtype)
+        self.assertTrue(not any([dest, mtype]))
+
+class TestFileOpenLinux(unittest.TestCase):
+    def testFOpen(self):
+        filename = '.OpenFile'
+        with open(filename, 'a+') as f:
+            f.write('Hi')
+            with open(filename) as rof:
+                rename(filename, "{0}_".format(filename))
+                self.assertTrue(exists("{0}_".format(filename)))
+                self.assertTrue(exists("{0}".format(filename)))
+
+
+    def tearDown(self):
+        if exists('.OpenFile'):
+            remove('.OpenFile')

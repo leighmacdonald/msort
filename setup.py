@@ -11,10 +11,7 @@ try:
 except ImportError:
     from os import walk
 
-try:
-    from setuptools import setup
-except ImportError:
-    from distutils.core import setup, Command
+from distutils.core import setup, Command
 
 class TestCommand(Command):
     user_options = [ ]
@@ -41,7 +38,7 @@ class TestCommand(Command):
         t.run(tests)
 setup(
     name='msort',
-    version='1.1',
+    version='1.0',
     description='utility for sorting scene releases into grouped subfolders',
     author='Leigh MacDonald',
     author_email='leigh@cudd.li',

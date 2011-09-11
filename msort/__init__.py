@@ -1,6 +1,6 @@
 from re import compile as rxcompile, IGNORECASE
 from sys import exit
-from os import listdir, mkdir, walk, sep
+from os import listdir, mkdir, walk, sep, readlink, W_OK, access
 from os.path import exists, join, normpath, abspath, expanduser
 try:
     from configparser import RawConfigParser
@@ -46,9 +46,17 @@ class ChangeSet:
             raise AttributeError('Operation must be callable')
         self.oper = operation
 
-    def exec(self):
+    def exec(self, commit=True):
         """ Execute the operation under the operation property """
-        return self.oper(self.source, self.dest)
+        for path in [self.source, self.dest]:
+            if not access(path, W_OK):
+                log.error("Insufficient permission: {0}".format(path))
+                return
+        if commit:
+            log.info(self)
+            return self.oper(self.source, self.dest)
+        else:
+            log.info(self)
 
     def __str__(self):
         return 'mv {0} {1}'.format(self.source, self.dest)
@@ -71,6 +79,7 @@ commit = true
 lock_enabled = true
 lock_pattern = ^\.(incomplete|lock|locked)
 new_pattern  = ^(.+?\.){2,}.+?-(.*)$
+error_continue=false
 
 [logging]
 enabled=true
@@ -155,6 +164,10 @@ rx1=.+?\.XXX\.
                 'sorted' : self.getboolean(section, 'sorted'),
                 'rx'     : self.getSectionRegex(section)
             })
+        if conf:
+            log.debug("Loaded {0} rule sections and {1} rules.".format(
+                len(conf), sum([len(r['rx']) for r in conf]))
+            )
         return conf
 
     def getSectionRegex(self, section):
@@ -259,7 +272,6 @@ class MSorter:
                 path = Location(self.config.get('general', 'basepath'))
                 if path.exists():
                     self.setBasePath(path)
-                    log.info("Set base path to: {0}".format(path))
                 else:
                     log.fatal("Invalid basepath specified")
                     exit(2)
@@ -269,11 +281,7 @@ class MSorter:
                 )
                 exit(2)
         self.rules = self.config.getRules()
-        if self.rules:
-            log.info("Loaded {0} rule sections and {1} rules.".format(
-                len(self.rules), sum([len(r['rx']) for r in self.rules]))
-            )
-        else:
+        if not self.rules:
             log.fatal("You must define at least 1 ruleset in the config. ({0})".format(
                 self.config.confPath))
             exit(2)
@@ -293,6 +301,7 @@ class MSorter:
         :type path: Location
         """
         self.basePath = path
+        log.debug("Set base path to: {0}".format(path))
 
     def genFileList(self):
         """
@@ -452,3 +461,18 @@ def mkdirp(dest):
                 raise
     if new:
         log.info("Created dir: {0}".format(dest))
+
+def isOpen(filepath):
+    pids=listdir('/proc')
+    for pid in sorted(pids):
+        try:
+            int(pid)
+        except ValueError:
+            continue
+        fd_dir=join('/proc', pid, 'fd')
+        for file in listdir(fd_dir):
+            try:
+                link=readlink(join(fd_dir, file))
+            except OSError:
+                continue
+            print(pid, link) 
