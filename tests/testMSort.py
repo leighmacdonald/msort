@@ -13,6 +13,7 @@ class TestMSorter(unittest.TestCase):
             'Bridezillas.S08E12.DSR.XviD-OMiCRON',
             'Not.Another.Not.Another.Movie.2011.HDRip.XVID.AC3.HQ.Hive-CM8',
             'History.of.ECW.1997.11.04.PDTV.XviD-W4F',
+            'file.avi',
             'Crave.S01E01.HDTV.XviD-SYS',
             'The.Terrorist.2010.720p.BluRay.x264-aAF',
             'TrollHunter.2010.LiMiTED.BDRip.XviD-NODLABS',
@@ -23,7 +24,7 @@ class TestMSorter(unittest.TestCase):
         ]
         cls._dir = 'testdir'
         if not exists(cls._dir):
-            mkdir('testdir')
+            mkdir(cls._dir)
         for d in dirs:
             try:
                 mkdir(join(cls._dir, d))
@@ -38,6 +39,12 @@ class TestMSorter(unittest.TestCase):
     def tearDownClass(cls):
         rmtree(cls._dir)
         remove(cls._conf.confPath)
+
+    def testCleanup(self):
+        f = self._msort.findCleanupFiles(self._dir)
+        print(f)
+        cs = [msort.ChangeSet.remove(f) for f in self._msort.findCleanupFiles(self._dir)]
+        print(cs)
         
     def testBasePath(self):
         self._msort.setBasePath(msort.Location(self._dir))
@@ -77,15 +84,18 @@ class TestMSorter(unittest.TestCase):
 
 class TestFileOpenLinux(unittest.TestCase):
     def testFOpen(self):
+        """
+        todo: Make this actually work..
+        :return:
+        """
         filename = '.OpenFile'
         with open(filename, 'a+') as f:
             f.write('Hi')
             with open(filename) as rof:
                 rename(filename, "{0}_".format(filename))
                 self.assertTrue(exists("{0}_".format(filename)))
-                self.assertTrue(exists("{0}".format(filename)))
+                self.assertFalse(exists("{0}".format(filename)))
 
 
     def tearDown(self):
-        if exists('.OpenFile'):
-            remove('.OpenFile')
+        [remove(f) for f in ['.OpenFile', '.OpenFile_' ] if exists(f)]

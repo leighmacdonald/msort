@@ -6,12 +6,7 @@ Releases are filtered into groups based on regex matching. These groups defined 
 to move releases to.
 
 TV shows can get auto sorted into subgroups based on the show names.
-eg. testdir/Top.Gear.17x06.HDTV.XviD-FoV -> testdir/TV/Top.Gear
-
-### TestCase Demo
-
-Below is the output of the test suite, it demonstrates roughly what the script
-will actually do.
+eg. mv Top.Gear.17x06.HDTV.XviD-FoV /TV/Top.Gear
 
 Demo
 ==========

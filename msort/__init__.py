@@ -1,7 +1,8 @@
 from re import compile as rxcompile, IGNORECASE
 from sys import exit
-from os import listdir, mkdir, walk, sep, readlink, W_OK, access
-from os.path import exists, join, normpath, abspath, expanduser
+from os import listdir, mkdir, walk, sep, readlink, access, EX_OK, remove
+from os.path import exists, join, normpath, abspath, expanduser, isdir, isfile
+from shutil import rmtree
 try:
     from configparser import RawConfigParser
 except ImportError:
@@ -33,7 +34,7 @@ log = logInit()
 
 class ChangeSet:
     """ A simple changeset to be executed """
-    def __init__(self, src, dst, operation=move):
+    def __init__(self, src, dst=None, operation=move):
         """
         :param src: Source file/dir
         :type src: string
@@ -46,20 +47,29 @@ class ChangeSet:
             raise AttributeError('Operation must be callable')
         self.oper = operation
 
+    @classmethod
+    def remove(cls, path):
+        if not exists(path):
+            raise OSError('Invalid path')
+        if isdir(path):
+            o = rmtree
+        elif isfile(path):
+            o = remove
+        return cls(path, operation=o)
+        
     def exec(self, commit=True):
         """ Execute the operation under the operation property """
-        for path in [self.source, self.dest]:
-            if not access(path, W_OK):
-                log.error("Insufficient permission: {0}".format(path))
-                return
         if commit:
             log.info(self)
-            return self.oper(self.source, self.dest)
+            if self.dest:
+                return self.oper(self.source, self.dest)
+            else:
+                return self.oper(self.source)
         else:
             log.info(self)
 
     def __str__(self):
-        return 'mv {0} {1}'.format(self.source, self.dest)
+        return '{2} {0} {1}'.format(self.source, self.dest, self.oper.__name__)
 
 class ConfigError(Exception):
     """
@@ -80,6 +90,10 @@ lock_enabled = true
 lock_pattern = ^\.(incomplete|lock|locked)
 new_pattern  = ^(.+?\.){2,}.+?-(.*)$
 error_continue=false
+
+[cleanup]
+enable = true
+rx1=(\.avi|\.mkv)$
 
 [logging]
 enabled=true
@@ -113,7 +127,7 @@ sorted=false
 rx1=.+?\.XXX\.
 """
     
-    def __init__(self, configPath="~/.msort.conf", skiplist=['general', 'ignored', 'logging']):
+    def __init__(self, configPath="~/.msort.conf", skiplist=['general', 'ignored', 'logging', 'cleanup']):
         """ Initialize the configuration. If a existing one doesnt exit a new one will be created
         in, by default, the users home directory, unless otherwise specified by the configPath
         parameter
@@ -303,13 +317,14 @@ class MSorter:
         self.basePath = path
         log.debug("Set base path to: {0}".format(path))
 
-    def genFileList(self):
+    def genFileList(self, path=None):
         """
         Generate a list of files to scan through
 
         :return: File list for base directory
         :rtype: list
         """
+        if path: return listdir("{0}".format(path))
         return listdir(self.basePath.path)
 
     def filterIgnored(self, paths):
@@ -335,6 +350,20 @@ class MSorter:
         :rtype: bool
         """
         return bool(self.newPattern.search(file))
+
+    def findCleanupFiles(self, path, filelist=[]):
+        """
+        Find files to delete from disk
+        
+        :param path:
+        :param filelist:
+        :return: Deleteable files
+        :rtype: list
+        """
+        rxlist = self.config.getSectionRegex('cleanup')
+        for f in self.genFileList(path):
+            [filelist.append(f) for rx in rxlist if rx.search(f)]
+        return list(set(filelist))
 
     def findNew(self, releases):
         """ Find any files that look "new", this means unsorted, not
@@ -408,6 +437,8 @@ class MSorter:
         :return: files found under the folder path
         :rtype: list
         """
+        if not exists(folder):
+            raise OSError('Invalid path')
         [ map(filelist.append, [ join(root, f) for f in files ]) for root, dirs, files in walk(folder) ]
         return filelist
 

@@ -1,5 +1,6 @@
 #!/bin/env python3
 from sys import argv, exit
+from os import stat
 from os.path import expanduser, exists, join
 from optparse import OptionParser
 from logging import DEBUG
@@ -11,6 +12,7 @@ parser.add_option('-d', '--debug', dest="debug", action="store_true", default=Fa
 parser.add_option('-t', '--test', dest="test", action="store_true", default=False, help="Test the changes without actually doing them")
 parser.add_option('-c', '--commit', dest="commit", action="store_true", default=None, help="Commit the changes to disk")
 parser.add_option('-e', '--error', dest="error", action="store_true", default=False, help="Continue on error")
+parser.add_option('-C', '--cleanup', dest="cleanup", action="store_true", default=False, help="Remove any files matching the cleanup filters")
 options, args = parser.parse_args()
 
 # Initialize
@@ -30,11 +32,15 @@ if options.test and options.commit:
     exit(2)
 if options.error:
     c.set('general','error_continue', "true")
+if options.cleanup:
+    c.set('cleanup', 'enable', 'true')
+    
 if args:
     for pa in args:
         if not exists(pa):
             log.warn("Skipping path not found: {0}".format(pa))
             continue
+
         pcs = parse_path(pa)
         p = pcs[len(pcs)-1:][0]
         mtype, path = m.findParentDir(p)
@@ -42,6 +48,8 @@ if args:
             ChangeSet(p, path).exec(c.getboolean('general', 'commit'))
 
     exit()
+
+commit = m.config.getboolean('general', 'commit')
 
 # Execute Full Program
 #print(m.genFileList())
@@ -55,7 +63,21 @@ for section in c.filteredSections():
         if mtype and path:
             releasePath = join(m.basePath.path, p)
             changes.append(ChangeSet(releasePath, path))
-commit = m.config.getboolean('general', 'commit')
+
+    if c.getboolean('cleanup', 'enable'):
+        log.debug('Starting cleanup')
+        cs = [ChangeSet.remove(join(m.basePath.path, f)) for f in m.findCleanupFiles(newPath)]
+        total = 0
+        for x in cs:
+            try:
+                info = stat(x.source)
+                x.exec(commit)
+                total += info.st_size
+            except Exception as err:
+                log.exception(err)
+        print("Total cleanup: {0}".format(total / 1024 / 1024))
+
+
 for change in changes:
     try:
         change.exec(commit)

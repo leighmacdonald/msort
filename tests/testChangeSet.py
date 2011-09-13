@@ -18,10 +18,10 @@ class TestChangeSet(unittest.TestCase):
     def testMove(self):
         self.assertFalse(exists(self.cs.dest))
         self.cs.exec()
-        self.assertTrue(exists(self.cs.dest))
+        self.assertTrue(exists(self.cs.dest), "wtf")
 
     def testStringRepr(self):
-        self.assertEqual('mv cs_temp cs_tempcs_temp', '{0}'.format(self.cs))
+        self.assertEqual('move cs_temp cs_tempcs_temp', '{0}'.format(self.cs))
 
     def tearDown(self):
         if exists(self.dir):
