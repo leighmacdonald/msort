@@ -4,7 +4,7 @@ from os import listdir, mkdir, walk, sep, readlink, access, EX_OK, remove
 from os.path import exists, join, normpath, abspath, expanduser, isdir, isfile
 from shutil import rmtree
 try:
-    from configparser import RawConfigParser
+    from configparser import RawConfigParser, NoOptionError, NoSectionError
 except ImportError:
     from ConfigParser import RawConfigParser
 from shutil import move
@@ -49,8 +49,17 @@ class ChangeSet:
 
     @classmethod
     def remove(cls, path):
+        """ Return a changeset to remove the given file or path from the filesystem
+
+        :param cls: ChangeSet
+        :type cls: ChangeSet
+        :param path:
+        :type path: str
+        :return: Changeset instance to be executed
+        :rtype: ChangeSet
+        """
         if not exists(path):
-            raise OSError('Invalid path')
+            raise OSError('Invalid path: {0}'.format(path))
         if isdir(path):
             o = rmtree
         elif isfile(path):
@@ -58,7 +67,11 @@ class ChangeSet:
         return cls(path, operation=o)
         
     def exec(self, commit=True):
-        """ Execute the operation under the operation property """
+        """ Execute the operation under the operation property
+
+        :param commit: Actually run the operation?
+        :type commit: bool
+        """
         if commit:
             log.info(self)
             if self.dest:
@@ -69,7 +82,12 @@ class ChangeSet:
             log.info(self)
 
     def __str__(self):
-        return '{2} {0} {1}'.format(self.source, self.dest, self.oper.__name__)
+        """ Show a simple string example of the operation to be performed
+
+        :return: shell like representation of the operation
+        :rtype: str
+        """
+        return '{2} {0} {1}'.format(self.source, self.dest if self.dest else '', self.oper.__name__)
 
 class ConfigError(Exception):
     """
@@ -196,10 +214,19 @@ rx1=.+?\.XXX\.
         """
         regexList = []
         if self.has_section(section):
-            for item, value in filter(lambda i: i[0].startswith('rx'), self.items(section)):
+            for item, value in self._rxFilter(self.items(section)):
                 regexList.append(rxcompile(value, IGNORECASE))
         return regexList
 
+    def _rxFilter(self, iter):
+        """ Filter to only regex items
+        
+        :param iter: Regex configuration tuples
+        :type iter: list
+        :return:
+        """
+        return filter(lambda i: i[0].startswith('rx'), iter)
+    
     def filteredSections(self):
         """ Get a list of valid ruleset sections
 
@@ -207,6 +234,20 @@ rx1=.+?\.XXX\.
         :rtype: filter
         """
         return filter(lambda p: p not in self.skip, self.sections())
+
+    def getNextRxId(self, section, findid=1):
+        """
+        Return the next available free regex item key
+        :param findid: Starting index
+        :type findid: int
+        :param section: Section to look through
+        :type section: string
+        :return: section regex key
+        :rtype: string
+        """
+        while 'rx{0}'.format(findid) in [id for id, value in self._rxFilter(self.items(section))]:
+            findid += 1
+        return 'rx{0}'.format(findid)
 
     def getSafe(self, section, option, default=False):
         """ Get a config value providing a default value if it doesnt exist
@@ -221,6 +262,25 @@ rx1=.+?\.XXX\.
         if self.has_section(section) and self.has_option(section, option):
             return self.get(section, option)
         return default
+
+    def addRule(self, section, rule):
+        """ Add a new regex rule to the configuration of a given section
+
+        :param section: configuration section
+        :type section: str
+        :param rule: Regex pattern
+        :type rule: str
+        :return: Add status
+        :rtype: bool
+
+        """
+        pass
+
+    def getRuleList(self, section):
+        if not section in self.filteredSections():
+            raise ValueError('Invalid section given')
+        secs = self._rxFilter(self.items(section))
+        return secs
 
 
 class Location:
@@ -269,7 +329,7 @@ class MSorter:
         """ Initialize the base path and the configuration values
 
         :param location: Base sort path to look through
-        :type location: str
+        :type location: Location
         :param config: Config instance
         :type: Config
         """
@@ -290,7 +350,7 @@ class MSorter:
                     log.fatal("Invalid basepath specified")
                     exit(2)
             else:
-                log.fatal('basepath must be defined in [general] ({0})'.format(
+                log.fatal('"basepath" must be defined in [general] ({0})'.format(
                     self.config.confPath)
                 )
                 exit(2)
@@ -299,7 +359,10 @@ class MSorter:
             log.fatal("You must define at least 1 ruleset in the config. ({0})".format(
                 self.config.confPath))
             exit(2)
-
+        if not self.config.has_option('general', 'new_pattern'):
+            log.fatal('"new_pattern" must be defined in [general] ({0})'.format(
+                    self.config.confPath))
+            exit(2)
         self.newPattern = rxcompile(self.config.get('general', 'new_pattern'))
         if self.config.has_section('ignored'):
             self.ignores = self.config.getSectionRegex('ignored')
@@ -399,6 +462,7 @@ class MSorter:
         :rtype: bool, bool
 
         """
+        found = False
         for rule in self.rules:
             for rx in rule['rx']:
                 match = rx.search(path)
@@ -413,7 +477,10 @@ class MSorter:
                         return False, False
                     else:
                         #print("Matched {0} -> {1}".format(rule['name'], path))
-                        break
+                        found = True
+                if found: break
+            if found: break
+            
         if dest:
             if not exists(dest):
                 mkdirp(dest)
@@ -438,7 +505,7 @@ class MSorter:
         :rtype: list
         """
         if not exists(folder):
-            raise OSError('Invalid path')
+            raise OSError('Invalid path: {0}'.format(folder))
         [ map(filelist.append, [ join(root, f) for f in files ]) for root, dirs, files in walk(folder) ]
         return filelist
 

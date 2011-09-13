@@ -20,7 +20,8 @@ class TestMSorter(unittest.TestCase):
             'Tyler.Perrys.Laugh.To.Keep.From.Crying.2009.DVDRip.XviD-IGUANA',
             'Deep.Anal.Drilling.3.XXX.DVDRip.XviD-Jiggly',
             'Anal.Ecstasy.XXX.NTSC.DVDR-EvilAngel',
-            'Feed.The.Fish.LIMITED.R2.PAL.DVDR-TARGET'
+            'Feed.The.Fish.LIMITED.R2.PAL.DVDR-TARGET',
+            'Top.Gear.17x06.HDTV.XviD-FoV'
         ]
         cls._dir = 'testdir'
         if not exists(cls._dir):
@@ -42,9 +43,11 @@ class TestMSorter(unittest.TestCase):
 
     def testCleanup(self):
         f = self._msort.findCleanupFiles(self._dir)
-        print(f)
-        cs = [msort.ChangeSet.remove(f) for f in self._msort.findCleanupFiles(self._dir)]
-        print(cs)
+        self.assertListEqual(['file.avi'], f)
+        cs = [msort.ChangeSet.remove(join(self._dir, f)) for f in self._msort.findCleanupFiles(self._dir)]
+        for c in cs:
+            c.exec()
+            self.assertFalse(exists(c.source))
         
     def testBasePath(self):
         self._msort.setBasePath(msort.Location(self._dir))

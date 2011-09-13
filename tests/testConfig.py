@@ -19,10 +19,7 @@ class ConfigTest(unittest.TestCase):
                          len(self.conf.parseRules()))
 
     def testInstantiateFailPath(self):
-        try:
-            msort.Config("/path/doesnt/exist")
-        except Exception as err:
-            self.assertIsInstance(err, msort.ConfigError)
+        self.assertRaises(Exception, msort.Config, '/path/doesnt/exist')
 
     def testGetSafeOk(self):
         self.assertEqual('^\.(incomplete|lock|locked)', self.conf.getSafe('general','lock_pattern'))
@@ -41,9 +38,22 @@ class ConfigTest(unittest.TestCase):
         tv.extend(xvid)
         [self.assertEqual(r.__class__.__name__, 'SRE_Pattern') for r in tv]
 
+    def testAddRuleOk(self):
+        self.conf.addRule('tv', '/rule/')
+
+    def testGetRuleList(self):
+        l = list(self.conf.getRuleList('tv'))
+        self.assertListEqual([('rx1', '(?P<name>.+?).S\\d{1,2}E\\d{1,2}'), ('rx2', '(?P<name>.+?).\\d{1,2}X\\d{2}')], l)
+
+    def testGetRuleListFail(self):
+        self.assertRaises(ValueError, self.conf.getRuleList, 'INVALID')
+        
     def testFilteredSections(self):
         self.assertListEqual(['tv','xvid','dvdr','xxx'], list(self.conf.filteredSections()))
 
+    def testGetNextRxId(self):
+        self.assertEqual('rx3', self.conf.getNextRxId('tv'))
+        
     @classmethod
     def tearDownClass(cls):
         remove(cls.conf.confPath)
