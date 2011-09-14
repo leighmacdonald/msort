@@ -45,10 +45,10 @@ if options.listrule and not options.section:
     parser.error("-l (list) requires the -s (section) option to be set")
 if options.listrule:
     log.info("Current regex pattern list ({0}):".format(options.section))
-    print('+---+------------------------------------------------------------------------------------')
+    log.info('+---+------------------------------------------------------------------------------------')
     for name, pattern in c.getRuleList(options.section.lower()):
         log.info('| {0} | {1} |'.format(name[2:], pattern))
-    print('+---+------------------------------------------------------------------------------------')
+    log.info('+---+------------------------------------------------------------------------------------')
 
     exit()
 if args:
@@ -61,7 +61,8 @@ if args:
         p = pcs[len(pcs)-1:][0]
         mtype, path = m.findParentDir(p)
         if mtype and path:
-            ChangeSet(p, path).exec(c.getboolean('general', 'commit'))
+            cs = ChangeSet(p, path)
+            cs(commit=c.getboolean('general', 'commit'))
 
     exit()
 
@@ -90,16 +91,16 @@ for section in c.filteredSections():
         for x in cs:
             try:
                 info = stat(x.source)
-                x.exec(commit)
+                x(commit=commit)
                 total += info.st_size
             except Exception as err:
                 log.exception(err)
-        print("Total cleanup: {0}".format(total / 1024 / 1024))
+        log.info("Total cleanup: {0}".format(total / 1024 / 1024))
 
 
 for change in changes:
     try:
-        change.exec(commit)
+        change(commit=commit)
     except KeyboardInterrupt:
         log.fatal("Caught Ctrl+C, Bailing early!")
         exit(2)

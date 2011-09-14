@@ -6,9 +6,10 @@ from shutil import rmtree
 try:
     from configparser import RawConfigParser, NoOptionError, NoSectionError
 except ImportError:
-    from ConfigParser import RawConfigParser
+    from ConfigParser import RawConfigParser, NoOptionError, NoSectionError
 from shutil import move
-from logging import getLogger, Formatter, StreamHandler, INFO
+from logging import getLogger, Formatter, StreamHandler, INFO, basicConfig
+basicConfig()
 
 def logInit(config=None):
     """Initialize the logger class
@@ -18,6 +19,7 @@ def logInit(config=None):
     :rtype: RootLogger
     """
     global log
+
     log = getLogger(__name__)
     if config and config.has_section('logging'):
         # Make a global logging object.
@@ -65,13 +67,14 @@ class ChangeSet:
         elif isfile(path):
             o = remove
         return cls(path, operation=o)
-        
-    def exec(self, commit=True):
+
+    def __call__(self, *args, **kwargs):
         """ Execute the operation under the operation property
 
         :param commit: Actually run the operation?
         :type commit: bool
         """
+        commit = kwargs['commit'] if 'commit' in kwargs else False
         if commit:
             log.info(self)
             if self.dest:
@@ -80,7 +83,7 @@ class ChangeSet:
                 return self.oper(self.source)
         else:
             log.info(self)
-
+            
     def __str__(self):
         """ Show a simple string example of the operation to be performed
 
@@ -286,7 +289,7 @@ rx1=.+?\.XXX\.
 class Location:
     """ Define a location to use, optionally validating it on
     instantiation """
-    def __init__(self, *paths, validate=True):
+    def __init__(self, *paths, **kwargs):
         """ Initialize and optionally validate the path given
         
         :param paths: N number of paramerters to be joined into a complete path
@@ -294,6 +297,7 @@ class Location:
         :param validate: Check the exitence of the path
         :type validate: bool
         """
+        validate = kwargs['validate'] if 'validate' in kwargs else True
         path = join(paths[0])
         if validate and not exists(path):
             raise IOError('Invalid path specified: {0}'.format(path))

@@ -17,7 +17,7 @@ class TestChangeSet(unittest.TestCase):
 
     def testMove(self):
         self.assertFalse(exists(self.cs.dest))
-        self.cs.exec()
+        self.cs(commit=True)
         self.assertTrue(exists(self.cs.dest), "wtf")
 
     def testStringRepr(self):
