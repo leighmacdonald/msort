@@ -486,8 +486,12 @@ class MSorter:
             if found: break
             
         if dest:
+            # TODO move this to a separate method
             if not exists(dest):
-                mkdirp(dest)
+                if self.config.getboolean('general', 'commit'):
+                    mkdirp(dest)
+                else:
+                    log.info('Skipped creating directory: {0}'.format(dest))
             releasePath = join(self.basePath.path, path)
             files = self.getReleaseFiles(releasePath)
             if any(map(self.isLocked, files)):
