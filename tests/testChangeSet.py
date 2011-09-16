@@ -5,7 +5,10 @@ Author: Leigh MacDonald <leigh.macdonald@gmail.com>
 from os import mkdir
 from os.path import exists
 from shutil import rmtree
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 import msort
 
 class TestChangeSet(unittest.TestCase):
@@ -13,7 +16,7 @@ class TestChangeSet(unittest.TestCase):
         self.dir = 'cs_temp'
         if not exists(self.dir):
             mkdir(self.dir)
-        self.cs = msort.ChangeSet(self.dir, self.dir*2)
+        self.cs = msort.ChangeSet(self.dir, '{0}{0}'.format(self.dir))
 
     def testMove(self):
         self.assertFalse(exists(self.cs.dest))

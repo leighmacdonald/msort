@@ -439,7 +439,7 @@ class MSorter:
         """ Check for a directory's empty-ness
 
         :param path: Full path to a directory to check
-        :type path: str
+        :type path: Location
         :return: empty status
         :rtype: bool
         """

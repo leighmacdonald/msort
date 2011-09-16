@@ -1,7 +1,10 @@
 from os import mkdir, remove, rename
 from os.path import exists, join
 from shutil import rmtree
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 import msort
 
 class TestMSorter(unittest.TestCase):

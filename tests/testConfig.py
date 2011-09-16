@@ -3,7 +3,10 @@
 Author: Leigh MacDonald <leigh.macdonald@gmail.com>
 """
 from os import remove
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 import msort
 
 class ConfigTest(unittest.TestCase):

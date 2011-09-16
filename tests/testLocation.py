@@ -5,7 +5,10 @@ Author: Leigh MacDonald <leigh.macdonald@gmail.com>
 from os import mkdir
 from os.path import exists
 from shutil import rmtree
-import unittest
+try:
+    import unittest2 as unittest
+except ImportError:
+    import unittest
 import msort
 
 class TestLocation(unittest.TestCase):
