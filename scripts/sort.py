@@ -1,6 +1,6 @@
 #!/bin/env python3
 from sys import argv, exit
-from os import stat
+from os import stat, rmdir
 from os.path import expanduser, exists, join
 from optparse import OptionParser
 from logging import DEBUG
@@ -13,6 +13,7 @@ parser.add_option('-t', '--test', dest="test", action="store_true", default=Fals
 parser.add_option('-c', '--commit', dest="commit", action="store_true", default=None, help="Commit the changes to disk")
 parser.add_option('-e', '--error', dest="error", action="store_true", default=False, help="Continue on error")
 parser.add_option('-C', '--cleanup', dest="cleanup", action="store_true", default=False, help="Remove any files matching the cleanup filters")
+parser.add_option('-E', '--empty', dest="cleanup_empty", action="store_true", default=False, help="Remove empty directories found")
 parser.add_option('-a', '--addrule', dest="addrule", metavar="REGEX", help="Add a new regex rule to the configuration")
 parser.add_option('-l', '--listrule', dest="listrule", action="store_true", help="List currently loaded regex rules")
 parser.add_option('-s', '--section', dest="section", metavar="SECTION", help="Set the section to use when performing operations")
@@ -24,8 +25,11 @@ path = argv[1] if len(argv) > 1 else defaultPath if exists(defaultPath) else exp
 c = Config()
 m = MSorter(config=c)
 
+
 if options.debug:
     log.setLevel(DEBUG)
+if options.cleanup_empty:
+    c.set('cleanup', 'delete_empty', "true")
 if options.test:
     c.set('general', 'commit', "false")
 if options.commit:
@@ -85,6 +89,14 @@ for section in c.filteredSections():
             changes.append(ChangeSet(releasePath, path))
 
     if options.cleanup or c.has_option('cleanup', 'enable') and c.getboolean('cleanup', 'enable'):
+        if c.getboolean('cleanup', 'delete_empty'):
+            if m.dirIsEmpty(newPath):
+                if commit:
+                    log.debug('Removing empty path: {0}'.format(newPath))
+                    rmdir(newPath)
+                else:
+                    log.info('Removing empty path: {0}'.format(newPath))
+                continue
         log.debug('Starting cleanup')
         cs = [ChangeSet.remove(join(m.basePath.path, f)) for f in m.findCleanupFiles(newPath)]
         total = 0

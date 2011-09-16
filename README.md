@@ -38,9 +38,29 @@ would be trivial for the current codebase.
     Writing /home/leigh/altroot/lib/python3.2/site-packages/msort-1.1-py3.2.egg-info
     [leigh@ws msort]$
 
+Configuration
+=======================
+
+All configuration options are stored in ~/.msort.conf. By default this file will be automatically
+created for you if one doesn't already exist. The config format is the standard ".ini" style.
+
+Any section group that isn't named 'general', 'cleanup', or 'ignored' is considered a "section". Each
+section will have a few basic options to configure. The 2 most important of these is the
+"sorted" keyword, and the "rxN" keywords, where N is a unique, to the section, integer. If sorted is
+true, then matching folders will be sorted into subfolders defined by the (?P<name>) regex capture
+grouping. For example if i have the regex: '(?P<name>.+?).S\d{1,2}E\d{1,2}' and the folder name
+'Entourage.S08E06.HDTV.Custom.HebSub.XviD-Extinct'. The named capture group would return 'Entourage',
+which would be be used for the destination subfolder value. If sorted is false then no suborting is
+done and the fodler will simply be placed under the sections folder, which is defined by the sections
+'path' keyword. Path definitions are relative to the general basepath.
+
 
 Usage
 =======
+
+All command line options will override any options defined in the main configuration file. I
+recommend using the -t option liberally, as it will run through and tell you what it would have done
+without making any changes.
 
     Usage: sort.py [options]
 
@@ -50,3 +70,39 @@ Usage
       -t, --test    Test the changes without actually doing them
       -c, --commit  Commit the changes to disk
       -e, --error   Continue on error
+
+
+Tests
+==========
+
+There is some decent test coverage for the code, however this is reliant on the newer unittest
+module only available in python 2.7/3.0+. The unittest2 module which backports some of the newer
+features may work, but i have no tested it at all. YMMV. Some test run output is below, it may help
+give you a idea of what this tool does.
+
+    move cs_temp cs_tempcs_temp
+    DEBUG Set base path to: testdir
+    DEBUG Loaded 2 ignore patterns.
+    DEBUG Set base path to: testdir
+    INFO rmtree testdir/file.avi
+    INFO Created dir: testdir/DVDR
+    DEBUG Found parent of testdir/Feed.The.Fish.LIMITED.R2.PAL.DVDR-TARGET : testdir/DVDR
+    INFO Created dir: testdir/TV/Entourage
+    DEBUG Found parent of testdir/Entourage.S08E06.HDTV.Custom.HebSub.XviD-Extinct : testdir/TV/Entourage
+    INFO Created dir: testdir/TV/Top.Gear
+    DEBUG Found parent of testdir/Top.Gear.17x06.HDTV.XviD-FoV : testdir/TV/Top.Gear
+    INFO Created dir: testdir/XVID
+    DEBUG Found parent of testdir/TrollHunter.2010.LiMiTED.BDRip.XviD-NODLABS : testdir/XVID
+    INFO Created dir: testdir/XXX
+    DEBUG Found parent of testdir/Deep.Anal.Drilling.3.XXX.DVDRip.XviD-Jiggly : testdir/XXX
+    DEBUG Loaded 4 rule sections and 5 rules.
+    DEBUG Loaded 4 rule sections and 5 rules.
+
+
+TODO
+=======================
+
+* Add ability to check if a file/folder is in use before attempting to move it (eg. still downloading), this
+isn't very straightforward on Linux unfortunately.
+* Fetch media information (synopsis/rating/genre/posters/etc).
+* Auto detect type of media based on the name using external resources (imdb/tvrage/etc)

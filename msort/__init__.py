@@ -9,7 +9,7 @@ except ImportError:
     from ConfigParser import RawConfigParser, NoOptionError, NoSectionError
 from shutil import move
 from logging import getLogger, Formatter, StreamHandler, INFO, basicConfig
-basicConfig()
+
 
 def logInit(config=None):
     """Initialize the logger class
@@ -114,6 +114,7 @@ error_continue=false
 
 [cleanup]
 enable = true
+delete_empty = true
 rx1=(\.avi|\.mkv)$
 
 [logging]
@@ -289,7 +290,7 @@ rx1=.+?\.XXX\.
 class Location:
     """ Define a location to use, optionally validating it on
     instantiation """
-    def __init__(self, *paths, **kwargs):
+    def __init__(self, *args, **kwargs):
         """ Initialize and optionally validate the path given
         
         :param paths: N number of paramerters to be joined into a complete path
@@ -298,7 +299,9 @@ class Location:
         :type validate: bool
         """
         validate = kwargs['validate'] if 'validate' in kwargs else True
-        path = join(paths[0])
+        path = ''
+        for p in args:
+            path = join(path, p)
         if validate and not exists(path):
             raise IOError('Invalid path specified: {0}'.format(path))
         self._path = path
@@ -431,6 +434,19 @@ class MSorter:
         for f in self.genFileList(path):
             [filelist.append(f) for rx in rxlist if rx.search(f)]
         return list(set(filelist))
+
+    def dirIsEmpty(self, path):
+        """ Check for a directory's empty-ness
+
+        :param path: Full path to a directory to check
+        :type path: str
+        :return: empty status
+        :rtype: bool
+        """
+        if exists(path.path) and isdir(path.path):
+            files = listdir(path.path)
+            return bool(not files)
+        raise OSError('Path is not valid: {0}'.format(path.path))
 
     def findNew(self, releases):
         """ Find any files that look "new", this means unsorted, not

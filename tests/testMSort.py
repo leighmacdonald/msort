@@ -85,6 +85,14 @@ class TestMSorter(unittest.TestCase):
         mtype, dest = self._msort.findParentDir('asdfasdfasd.fas.fas.fas.fasf-asdf')
         self.assertTrue(not any([dest, mtype]))
 
+    def testCleanupEmpty(self):
+        p = msort.Location(self._dir, 'cleanme', validate=False)
+        if not exists(p.path): mkdir(p.path)
+        self.assertTrue(self._msort.dirIsEmpty(p))
+        open(join(p.path, 'test.file'), 'w').write('Hi')
+        self.assertFalse(self._msort.dirIsEmpty(p))
+        if exists(p.path): rmtree(p.path)
+
 class TestFileOpenLinux(unittest.TestCase):
     def testFOpen(self):
         """
