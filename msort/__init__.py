@@ -1,7 +1,7 @@
 from re import compile as rxcompile, IGNORECASE
 from sys import exit
 from os import listdir, mkdir, walk, sep, readlink, access, EX_OK, remove
-from os.path import exists, join, normpath, abspath, expanduser, isdir, isfile
+from os.path import exists, join, normpath, abspath, expanduser, isdir, isfile, getsize
 from shutil import rmtree
 try:
     from configparser import RawConfigParser, NoOptionError, NoSectionError
@@ -10,6 +10,19 @@ except ImportError:
 from shutil import move
 from logging import getLogger, Formatter, StreamHandler, INFO, basicConfig
 
+def friendlysize(num):
+    for x in ['bytes','KB','MB','GB','TB']:
+        if num < 1024.0:
+            return "%3.1f%s" % (num, x)
+        num /= 1024.0
+
+def get_size(start_path = '.'):
+    total_size = 0
+    for dirpath, dirnames, filenames in walk(start_path):
+        for f in filenames:
+            fp = join(dirpath, f)
+            total_size += getsize(fp)
+    return total_size
 
 def logInit(config=None):
     """Initialize the logger class
@@ -301,7 +314,10 @@ class Location:
         validate = kwargs['validate'] if 'validate' in kwargs else True
         path = ''
         for p in args:
-            path = join(path, p)
+            if hasattr(p, 'path'):
+                path = join(path, p.path)
+            else:
+                path = join(path, p)
         if validate and not exists(path):
             raise IOError('Invalid path specified: {0}'.format(path))
         self._path = path
@@ -395,7 +411,7 @@ class MSorter:
         :rtype: list
         """
         if path: return listdir("{0}".format(path))
-        return listdir(self.basePath.path)
+        return listdir(self.basePath)
 
     def filterIgnored(self, paths):
         """ Remove any ignored files from the given list of files
@@ -421,7 +437,7 @@ class MSorter:
         """
         return bool(self.newPattern.search(file))
 
-    def findCleanupFiles(self, path, filelist=[]):
+    def findCleanupFiles(self, path):
         """
         Find files to delete from disk
         
@@ -430,6 +446,7 @@ class MSorter:
         :return: Deleteable files
         :rtype: list
         """
+        filelist = []
         rxlist = self.config.getSectionRegex('cleanup')
         for f in self.genFileList(path):
             [filelist.append(f) for rx in rxlist if rx.search(f)]
@@ -493,11 +510,25 @@ class MSorter:
                     else:
                         dest = join(base, rule['path'], match.groupdict()['name'])
                     mtype = rule['name']
-                    if exists(join(dest, path)):
+                    d = join(dest, path)
+                    if exists(d):
                         return False, False
-                    else:
+                        src = join(base, rule['path'], path)
+                        d_size = get_size(d)
+                        p_size = get_size(src)
+                        if p_size == d_size:
+                            log.info('Removing duplicate directory: {0}'.format(src))
+                            rmtree(src)
+                            return False, False
+                        elif d_size < p_size:
+                            log.info('Removing smaller destination directory: {0}'.format(d))
+                            rmtree(d)
+                            found = True
+                        else:
+                            return False, False
+                    #else:
                         #print("Matched {0} -> {1}".format(rule['name'], path))
-                        found = True
+                    found = True
                 if found: break
             if found: break
             
@@ -508,7 +539,7 @@ class MSorter:
                     mkdirp(dest)
                 else:
                     log.info('Skipped creating directory: {0}'.format(dest))
-            releasePath = join(self.basePath.path, path)
+            releasePath = join(self.basePath, path)
             files = self.getReleaseFiles(releasePath)
             if any(map(self.isLocked, files)):
                 log.error("LOCKED!")

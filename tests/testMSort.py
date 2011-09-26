@@ -46,7 +46,7 @@ class TestMSorter(unittest.TestCase):
 
     def testCleanup(self):
         f = self._msort.findCleanupFiles(self._dir)
-        self.assertListEqual(['file.avi'], f)
+        self.assertSetEqual(set(['file.avi']), f)
         cs = [msort.ChangeSet.remove(join(self._dir, f)) for f in self._msort.findCleanupFiles(self._dir)]
         for c in cs:
             c(commit=True)

@@ -1,13 +1,17 @@
 #!/bin/env python3
+"""
+sort.py -- A command line implementation for the msort module.
+
+"""
 from sys import argv, exit
 from os import stat, rmdir
 from os.path import expanduser, exists, join
 from optparse import OptionParser
 from logging import DEBUG
-from msort import MSorter, Location, Config, ChangeSet, log, parse_path
+from msort import MSorter, Location, Config, ChangeSet, log, parse_path, friendlysize
 
 # Configure
-parser = OptionParser()
+parser = OptionParser(version="%prog 1.0", description=__doc__)
 parser.add_option('-d', '--debug', dest="debug", action="store_true", default=False, help="Enable debugging output level")
 parser.add_option('-t', '--test', dest="test", action="store_true", default=False, help="Test the changes without actually doing them")
 parser.add_option('-c', '--commit', dest="commit", action="store_true", default=None, help="Commit the changes to disk")
@@ -17,6 +21,7 @@ parser.add_option('-E', '--empty', dest="cleanup_empty", action="store_true", de
 parser.add_option('-a', '--addrule', dest="addrule", metavar="REGEX", help="Add a new regex rule to the configuration")
 parser.add_option('-l', '--listrule', dest="listrule", action="store_true", help="List currently loaded regex rules")
 parser.add_option('-s', '--section', dest="section", metavar="SECTION", help="Set the section to use when performing operations")
+
 options, args = parser.parse_args()
 
 # Initialize
@@ -63,8 +68,8 @@ if args:
 
         pcs = parse_path(pa)
         p = pcs[len(pcs)-1:][0]
-        mtype, path = m.findParentDir(p)
-        if mtype and path:
+        mediatype, parent = m.findParentDir(p)
+        if mediatype and parent:
             cs = ChangeSet(p, path)
             cs(commit=c.getboolean('general', 'commit'))
 
@@ -76,20 +81,19 @@ commit = m.config.getboolean('general', 'commit')
 #print(m.genFileList())
 changes = []
 for section in c.filteredSections():
-    newPath = Location(join(c.get('general', 'basepath'), c.get(section, 'path')), validate=False)
-    if not newPath.exists():
+    newPath = join(c.get('general', 'basepath'), c.get(section, 'path'))
+    if not exists(newPath):
         log.error('Skipping invalid section path: {0}'.format(newPath))
         continue
     m.setBasePath(newPath)
     log.info("Scanning {0}".format(newPath))
-    for p in m.filterIgnored(m.findNew(m.genFileList())):
-        mtype, path = m.findParentDir(p)
+    for newp in m.filterIgnored(m.findNew(m.genFileList())):
+        mtype, path = m.findParentDir(newp)
         if mtype and path:
-            releasePath = join(m.basePath.path, p)
-            changes.append(ChangeSet(releasePath, path))
-
+            changes.append(ChangeSet(join(m.basePath, newp), path))
+        #else: continue
     if options.cleanup or c.has_option('cleanup', 'enable') and c.getboolean('cleanup', 'enable'):
-        if c.getboolean('cleanup', 'delete_empty'):
+        if c.has_option('cleanup', 'delete_empty') and c.getboolean('cleanup', 'delete_empty'):
             if m.dirIsEmpty(newPath):
                 if commit:
                     log.debug('Removing empty path: {0}'.format(newPath))
@@ -97,30 +101,27 @@ for section in c.filteredSections():
                 else:
                     log.info('Removing empty path: {0}'.format(newPath))
                 continue
-        log.debug('Starting cleanup')
-        cs = [ChangeSet.remove(join(m.basePath.path, f)) for f in m.findCleanupFiles(newPath)]
-        total = 0
-        for x in cs:
-            try:
-                info = stat(x.source)
-                x(commit=commit)
-                total += info.st_size
-            except Exception as err:
-                log.exception(err)
-        log.info("Total cleanup: {0}".format(total / 1024 / 1024))
+        for f in m.findCleanupFiles(newPath):
+            oper = ChangeSet.remove(join(m.basePath, f))
+            changes.append(oper)
 
-
-for change in changes:
-    try:
-        change(commit=commit)
-    except KeyboardInterrupt:
-        log.fatal("Caught Ctrl+C, Bailing early!")
-        exit(2)
-    except Exception as err:
-        log.exception(err)
-        if c.getboolean('general', 'error_continue'):
-            log.error(err)
-            continue
-        else:
-            log.error("Bailing early, too many errors to continue")
+total = 0
+if changes:
+    log.debug('Starting cleanup')
+    for change in changes:
+        try:
+            if change.oper == 'remove':
+                total += stat(change.source).st_size
+            change(commit=commit)
+        except KeyboardInterrupt:
+            log.fatal("Caught Ctrl+C, Bailing early!")
             exit(2)
+        except Exception as err:
+            log.exception(err)
+            if c.getboolean('general', 'error_continue'):
+                log.error(err)
+                continue
+            else:
+                log.error("Bailing early, too many errors to continue")
+                exit(2)
+    log.info("Total cleanup: {0}".format(friendlysize(total)))
