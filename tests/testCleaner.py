@@ -21,10 +21,14 @@ class TestCleaner(TestCase):
         subdir = join(self.testdir,'empty1')
         mkdir(subdir)
         open(join(subdir, 'test.file'), 'w').write("")
+        subdir_data = join(self.testdir,'data1')
+        mkdir(subdir_data)
+        open(join(subdir_data, 'data.file'), 'w').write('Hello!')
 
     def tearDown(self):
         rmtree(self.testdir)
         
     def testFindEmpty(self):
         fsc = FileSystemCleaner(self.testdir)
-        fsc.findEmptyDirectories()
+        dirs = fsc.findEmptyDirectories()
+        self.assertEqual(1, len(dirs))
