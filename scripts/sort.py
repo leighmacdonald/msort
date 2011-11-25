@@ -9,7 +9,7 @@ from os.path import expanduser, exists, join
 from optparse import OptionParser
 from logging import DEBUG
 from msort import MSorter, Location, Config, ChangeSet, log, parse_path, friendlysize
-
+from msort.cleaner import FileSystemCleaner
 # Configure
 parser = OptionParser(version="%prog 1.0", description=__doc__)
 parser.add_option('-d', '--debug', dest="debug", action="store_true", default=False, help="Enable debugging output level")
@@ -17,11 +17,10 @@ parser.add_option('-t', '--test', dest="test", action="store_true", default=Fals
 parser.add_option('-c', '--commit', dest="commit", action="store_true", default=None, help="Commit the changes to disk")
 parser.add_option('-e', '--error', dest="error", action="store_true", default=False, help="Continue on error")
 parser.add_option('-C', '--cleanup', dest="cleanup", action="store_true", default=False, help="Remove any files matching the cleanup filters")
-parser.add_option('-E', '--empty', dest="cleanup_empty", action="store_true", default=False, help="Remove empty directories found")
+parser.add_option('-E', '--empty', dest="cleanup_empty", default=None, help="Remove empty directories found")
 parser.add_option('-a', '--addrule', dest="addrule", metavar="REGEX", help="Add a new regex rule to the configuration")
 parser.add_option('-l', '--listrule', dest="listrule", action="store_true", help="List currently loaded regex rules")
 parser.add_option('-s', '--section', dest="section", metavar="SECTION", help="Set the section to use when performing operations")
-
 options, args = parser.parse_args()
 
 # Initialize
@@ -44,6 +43,10 @@ if options.test and options.commit:
     exit(2)
 if options.error:
     c.set('general','error_continue', "true")
+
+if options.cleanup_empty:
+    cleaner = FileSystemCleaner(options.cleanup_empty)
+
 if options.cleanup:
     c.set('cleanup', 'enable', 'true')
 if options.addrule and not options.section:
