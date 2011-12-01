@@ -45,8 +45,13 @@ if options.error:
     c.set('general','error_continue', "true")
 
 if options.cleanup_empty:
+    from shutil import rmtree
     cleaner = FileSystemCleaner(options.cleanup_empty)
-
+    empties = cleaner.findEmptyDirectories()
+    log.info("Found {0} corrupted or empty directories".format(len(empties)))
+    for d in empties:
+        rmtree(d)
+    exit(0)
 if options.cleanup:
     c.set('cleanup', 'enable', 'true')
 if options.addrule and not options.section:
