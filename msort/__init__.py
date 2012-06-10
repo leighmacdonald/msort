@@ -61,6 +61,7 @@ class ChangeSet:
         if not hasattr(operation, '__call__'):
             raise AttributeError('Operation must be callable')
         self.oper = operation
+        self.log = getLogger(__name__)
 
     @classmethod
     def remove(cls, path):
@@ -89,13 +90,13 @@ class ChangeSet:
         """
         commit = kwargs['commit'] if 'commit' in kwargs else False
         if commit:
-            log.info(self)
+            self.log.info(self)
             if self.dest:
                 return self.oper(self.source, self.dest)
             else:
                 return self.oper(self.source)
         else:
-            log.info(self)
+            self.log.info(self)
             
     def __str__(self):
         """ Show a simple string example of the operation to be performed
@@ -161,8 +162,9 @@ path=XXX
 sorted=false
 rx1=.+?\.XXX\.
 """
-    
-    def __init__(self, configPath="~/.msort.conf", skiplist=['general', 'ignored', 'logging', 'cleanup']):
+    skip = ('general', 'ignored', 'logging', 'cleanup')
+
+    def __init__(self, configPath="~/.msort.conf", skiplist=None):
         """ Initialize the configuration. If a existing one doesnt exit a new one will be created
         in, by default, the users home directory, unless otherwise specified by the configPath
         parameter
@@ -171,8 +173,15 @@ rx1=.+?\.XXX\.
         :param skip: List of filtered sections to skip when parsing for rules
         """
         RawConfigParser.__init__(self)
-        self.skip = skiplist
+        self.log = getLogger(__name__)
+        if skiplist:
+            self.skip = skiplist
         self.confPath = expanduser(configPath)
+        self._initConfigPath()
+        self.read(self.confPath)
+        self._rules = self.parseRules()
+
+    def _initConfigPath(self):
         if not exists(self.confPath):
             try:
                 pcs = self.confPath.split(sep)
@@ -187,9 +196,6 @@ rx1=.+?\.XXX\.
                 raise ConfigError(err.strerror)
             except OSError:
                 raise ConfigError('Cannot create configuration base directory {0}'.format(p))
-        self.read(self.confPath)
-        self._rules = self.parseRules()
-
     def getRules(self):
         """Return the loaded ruleset
 
@@ -214,7 +220,7 @@ rx1=.+?\.XXX\.
                 'rx'     : self.getSectionRegex(section)
             })
         if conf:
-            log.debug("Loaded {0} rule sections and {1} rules.".format(
+            self.log.debug("Loaded {0} rule sections and {1} rules.".format(
                 len(conf), sum([len(r['rx']) for r in conf]))
             )
         return conf
@@ -319,7 +325,7 @@ class Location:
             else:
                 path = join(path, p)
         if validate and not exists(path):
-            raise IOError('Invalid path specified: {0}'.format(path))
+            raise OSError('Invalid path specified: {0}'.format(path))
         self._path = path
 
     @property
@@ -360,38 +366,26 @@ class MSorter:
             self.config = config
         else:
             self.config = Config()
-        log = logInit(self.config)
+        self.log = getLogger(__name__)
 
         if location:
             self.setBasePath(location)
         else:
             if self.config.has_option('general', 'basepath'):
-                path = Location(self.config.get('general', 'basepath'))
-                if path.exists():
-                    self.setBasePath(path)
-                else:
-                    log.fatal("Invalid basepath specified")
-                    exit(2)
+                self.setBasePath(Location(self.config.get('general', 'basepath'), validate=True))
             else:
-                log.fatal('"basepath" must be defined in [general] ({0})'.format(
-                    self.config.confPath)
-                )
-                exit(2)
+                raise ConfigError('"basepath" must be defined in [general] ({0})'.format(self.config.confPath))
         self.rules = self.config.getRules()
         if not self.rules:
-            log.fatal("You must define at least 1 ruleset in the config. ({0})".format(
-                self.config.confPath))
-            exit(2)
+            raise ConfigError("You must define at least 1 ruleset in the config. ({0})".format(self.config.confPath))
         if not self.config.has_option('general', 'new_pattern'):
-            log.fatal('"new_pattern" must be defined in [general] ({0})'.format(
-                    self.config.confPath))
-            exit(2)
+            raise ConfigError('"new_pattern" must be defined in [general] ({0})'.format(self.config.confPath))
         self.newPattern = rxcompile(self.config.get('general', 'new_pattern'))
         if self.config.has_section('ignored'):
             self.ignores = self.config.getSectionRegex('ignored')
-            log.debug('Loaded {0} ignore patterns.'.format(len(self.ignores)))
+            self.log.debug('Loaded {0} ignore patterns.'.format(len(self.ignores)))
         else:
-            log.info('No ignore patterns defined')
+            self.log.warn('No ignore patterns defined')
 
             
     def setBasePath(self, path):
@@ -401,7 +395,7 @@ class MSorter:
         :type path: Location
         """
         self.basePath = path
-        log.debug("Set base path to: {0}".format(path))
+        self.log.debug("Set base path to: {0}".format(path))
 
     def genFileList(self, path=None):
         """
@@ -410,7 +404,8 @@ class MSorter:
         :return: File list for base directory
         :rtype: list
         """
-        if path: return listdir("{0}".format(path))
+        if path:
+            return listdir(path)
         return listdir(self.basePath)
 
     def filterIgnored(self, paths):
@@ -421,11 +416,9 @@ class MSorter:
         :return: List of validated files
         :rtype: list
         """
-        valid = []
-        for path in paths:
-            if not any([rx.search(path) for rx in self.ignores]):
-                valid.append(path)
-        return valid
+        def isok(p):
+            return not any([rx.search(p) for rx in self.ignores])
+        return filter(isok, paths)
     
     def isNew(self, file):
         """ Do a "new check" on the given file. Currently just looks for "SNNENN"
@@ -592,7 +585,7 @@ def parse_path(path):
     """
     return normpath(abspath(path)).split(sep)[1:]
 
-def mkdirp(dest):
+def mkdirppp(dest):
     """ Emulate 'mkdir -p'
 
     :param dest: Path to create
@@ -613,7 +606,7 @@ def mkdirp(dest):
             else:
                 raise
     if new:
-        log.info("Created dir: {0}".format(dest))
+        self.log.info("Created dir: {0}".format(dest))
 
 def isOpen(filepath):
     pids=listdir('/proc')

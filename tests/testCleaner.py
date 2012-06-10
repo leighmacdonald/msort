@@ -34,10 +34,11 @@ class TestCleaner(TestCase):
         self.assertEqual(1, len(dirs))
 
     def testFinePartialEmpty(self):
-        dirs = FileSystemCleaner('/mnt/storage/MUSIC/MUSIC').findCorruptDirectories()
+        fsc = FileSystemCleaner('/mnt/storage/MUSIC/MUSIC')
+        dirs = fsc.findCorruptDirectories()
         for rls, stats in dirs:
             if stats[0]:
-                print("{0} {2}/{3} {1}% Empty".format(rls, int(stats[0]/stats[1]*100.0), stats))
-
+                print("{0} {2}/{3} {1}% Empty".format(rls, int(stats[0]/stats[1]*100.0), *stats))
+        #fsc.wipeDirs(dirs)
 
 

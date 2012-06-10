@@ -7,9 +7,10 @@ from sys import argv, exit
 from os import stat, rmdir
 from os.path import expanduser, exists, join
 from optparse import OptionParser
-from logging import DEBUG
-from msort import MSorter, Location, Config, ChangeSet, log, parse_path, friendlysize
+from logging import DEBUG, basicConfig
+from msort import MSorter, Location, Config, ChangeSet, log, parse_path, friendlysize, ConfigError
 from msort.cleaner import FileSystemCleaner
+
 # Configure
 parser = OptionParser(version="%prog 1.0", description=__doc__)
 parser.add_option('-d', '--debug', dest="debug", action="store_true", default=False, help="Enable debugging output level")
@@ -27,9 +28,9 @@ options, args = parser.parse_args()
 defaultPath = expanduser("~/Music")
 path = argv[1] if len(argv) > 1 else defaultPath if exists(defaultPath) else expanduser("~/")
 c = Config()
-m = MSorter(config=c)
 
 
+basicConfig(level=DEBUG)
 if options.debug:
     log.setLevel(DEBUG)
 if options.cleanup_empty:
@@ -68,6 +69,12 @@ if options.listrule:
     log.info('+---+------------------------------------------------------------------------------------')
 
     exit()
+try:
+    m = MSorter(config=c)
+except ConfigError as err:
+    print('Initialization failed:')
+    print(err)
+
 if args:
     for pa in args:
         if not exists(pa):
