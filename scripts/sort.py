@@ -4,11 +4,11 @@ sort.py -- A command line implementation for the msort module.
 
 """
 from sys import argv, exit
-from os import stat, rmdir
-from os.path import expanduser, exists, join
+
+from os.path import expanduser, exists
 from optparse import OptionParser
 from logging import DEBUG, basicConfig
-from msort import MSorter, Location, Config, ChangeSet, log, parse_path, friendlysize, ConfigError
+from msort import MSorter, Config, ChangeSet, log, parse_path, ConfigError
 from msort.cleaner import FileSystemCleaner
 
 # Configure
@@ -67,76 +67,50 @@ if options.listrule:
     for name, pattern in c.getRuleList(options.section.lower()):
         log.info('| {0} | {1} |'.format(name[2:], pattern))
     log.info('+---+------------------------------------------------------------------------------------')
-
     exit()
 try:
     m = MSorter(config=c)
+    if args:
+        for pa in args:
+            if not exists(pa):
+                log.warn("Skipping path not found: {0}".format(pa))
+                continue
+
+            pcs = parse_path(pa)
+            p = pcs[len(pcs)-1:][0]
+            mediatype, parent = m.findParentDir(p)
+            if mediatype and parent:
+                cs = ChangeSet(p, path)
+                cs(commit=c.getboolean('general', 'commit'))
+        exit()
+    operations = m.execute()
+    for i, op in enumerate(operations):
+        try:
+            if op.oper == 'remove':
+                total += stat(op.source).st_size
+            op(commit=c.commit)
+        except KeyboardInterrupt:
+            log.fatal("Caught Ctrl+C, Bailing early!")
+            raise
+        except Exception as err:
+            log.exception(err)
+            if self.config.getboolean('general', 'error_continue'):
+                self.log.error(err)
+                continue
+            else:
+                self.log.error("Bailing early, too many errors to continue")
+                exit(2)
+    self.log.info("Total cleanup: {0}".format(friendlysize(total)))
 except ConfigError as err:
     print('Initialization failed:')
     print(err)
-
-if args:
-    for pa in args:
-        if not exists(pa):
-            log.warn("Skipping path not found: {0}".format(pa))
-            continue
-
-        pcs = parse_path(pa)
-        p = pcs[len(pcs)-1:][0]
-        mediatype, parent = m.findParentDir(p)
-        if mediatype and parent:
-            cs = ChangeSet(p, path)
-            cs(commit=c.getboolean('general', 'commit'))
-
+except Exception as err:
+    print('Fatal error occurred')
+    print(err)
+finally:
     exit()
 
-commit = m.config.getboolean('general', 'commit')
 
-# Execute Full Program
-#print(m.genFileList())
-changes = []
-for section in c.filteredSections():
-    newPath = join(c.get('general', 'basepath'), c.get(section, 'path'))
-    if not exists(newPath):
-        log.error('Skipping invalid section path: {0}'.format(newPath))
-        continue
-    m.setBasePath(newPath)
-    log.info("Scanning {0}".format(newPath))
-    for newp in m.filterIgnored(m.findNew(m.genFileList())):
-        mtype, path = m.findParentDir(newp)
-        if mtype and path:
-            changes.append(ChangeSet(join(m.basePath, newp), path))
-        #else: continue
-    if options.cleanup or c.has_option('cleanup', 'enable') and c.getboolean('cleanup', 'enable'):
-        if c.has_option('cleanup', 'delete_empty') and c.getboolean('cleanup', 'delete_empty'):
-            if m.dirIsEmpty(newPath):
-                if commit:
-                    log.debug('Removing empty path: {0}'.format(newPath))
-                    rmdir(newPath)
-                else:
-                    log.info('Removing empty path: {0}'.format(newPath))
-                continue
-        for f in m.findCleanupFiles(newPath):
-            oper = ChangeSet.remove(join(m.basePath, f))
-            changes.append(oper)
 
-total = 0
-if changes:
-    log.debug('Starting cleanup')
-    for change in changes:
-        try:
-            if change.oper == 'remove':
-                total += stat(change.source).st_size
-            change(commit=commit)
-        except KeyboardInterrupt:
-            log.fatal("Caught Ctrl+C, Bailing early!")
-            exit(2)
-        except Exception as err:
-            log.exception(err)
-            if c.getboolean('general', 'error_continue'):
-                log.error(err)
-                continue
-            else:
-                log.error("Bailing early, too many errors to continue")
-                exit(2)
-    log.info("Total cleanup: {0}".format(friendlysize(total)))
+
+

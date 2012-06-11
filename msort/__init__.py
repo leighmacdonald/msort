@@ -1,7 +1,7 @@
 from re import compile as rxcompile, IGNORECASE
 from sys import exit
-from os import listdir, mkdir, walk, sep, readlink, access, EX_OK, remove
-from os.path import exists, join, normpath, abspath, expanduser, isdir, isfile, getsize
+from os import listdir, mkdir, walk, sep, readlink, access, EX_OK, remove, stat, rmdir
+from os.path import exists, join, normpath, abspath, expanduser, isdir, isfile, getsize, basename
 from shutil import rmtree
 try:
     from configparser import RawConfigParser, NoOptionError, NoSectionError
@@ -19,9 +19,7 @@ def friendlysize(num):
 def get_size(start_path = '.'):
     total_size = 0
     for dirpath, dirnames, filenames in walk(start_path):
-        for f in filenames:
-            fp = join(dirpath, f)
-            total_size += getsize(fp)
+        total_size += sum([getsize(join(dirpath, f)) for f in filenames])
     return total_size
 
 def logInit(config=None):
@@ -39,7 +37,8 @@ def logInit(config=None):
         level = int(config.getSafe('logging', 'level', INFO))
         log.setLevel(level)
         h = StreamHandler()
-        f = Formatter("%(levelname)s %(message)s")
+        #f = Formatter("%(levelname)s %(message)s")
+        f = Formatter("%(message)s")
         h.setFormatter(f)
         log.addHandler(h)
     else:
@@ -52,9 +51,9 @@ class ChangeSet:
     def __init__(self, src, dst=None, operation=move):
         """
         :param src: Source file/dir
-        :type src: string
+        :type src: Location
         :param dst: Destination file/dir
-        :type dst: string
+        :type dst: Location
         """
         self.source = src
         self.dest = dst
@@ -70,7 +69,7 @@ class ChangeSet:
         :param cls: ChangeSet
         :type cls: ChangeSet
         :param path:
-        :type path: str
+        :type path: Location
         :return: Changeset instance to be executed
         :rtype: ChangeSet
         """
@@ -305,6 +304,10 @@ rx1=.+?\.XXX\.
         secs = self._rxFilter(self.items(section))
         return secs
 
+    @property
+    def commit(self):
+        return self.getboolean('general', 'commit')
+
 
 class Location:
     """ Define a location to use, optionally validating it on
@@ -317,16 +320,17 @@ class Location:
         :param validate: Check the exitence of the path
         :type validate: bool
         """
-        validate = kwargs['validate'] if 'validate' in kwargs else True
         path = ''
         for p in args:
             if hasattr(p, 'path'):
                 path = join(path, p.path)
             else:
                 path = join(path, p)
-        if validate and not exists(path):
-            raise OSError('Invalid path specified: {0}'.format(path))
         self._path = path
+
+    @property
+    def size(self):
+        return get_size(self.path)
 
     @property
     def path(self):
@@ -336,6 +340,10 @@ class Location:
         :rtype: string
         """
         return self._path
+
+    @property
+    def basename(self):
+        return basename(self.path)
 
     def exists(self):
         """ Check if the current location exists
@@ -348,7 +356,7 @@ class Location:
         """
         Return the current path as a string representation
         """
-        return self._path
+        return self.path
 
 class MSorter:
     """
@@ -397,16 +405,19 @@ class MSorter:
         self.basePath = path
         self.log.debug("Set base path to: {0}".format(path))
 
-    def genFileList(self, path=None):
+    def genFileList(self, path=''):
         """
         Generate a list of files to scan through
 
         :return: File list for base directory
         :rtype: list
         """
-        if path:
-            return listdir(path)
-        return listdir(self.basePath)
+        src = path if path else self.basePath
+        dirs = listdir(src)
+        file_list = []
+        for d in dirs:
+            file_list.append(Location(join(src, d)))
+        return file_list
 
     def filterIgnored(self, paths):
         """ Remove any ignored files from the given list of files
@@ -417,18 +428,18 @@ class MSorter:
         :rtype: list
         """
         def isok(p):
-            return not any([rx.search(p) for rx in self.ignores])
+            return not any([rx.search(p.path) for rx in self.ignores])
         return filter(isok, paths)
     
     def isNew(self, file):
         """ Do a "new check" on the given file. Currently just looks for "SNNENN"
         
         :param file: File to check
-        :type file: str
+        :type file: Location
         :return: New status
         :rtype: bool
         """
-        return bool(self.newPattern.search(file))
+        return bool(self.newPattern.search(file.path))
 
     def findCleanupFiles(self, path):
         """
@@ -442,21 +453,26 @@ class MSorter:
         filelist = []
         rxlist = self.config.getSectionRegex('cleanup')
         for f in self.genFileList(path):
-            [filelist.append(f) for rx in rxlist if rx.search(f)]
+            for rx in rxlist:
+                if isfile(f):
+                    if rx.search(f):
+                        filelist.append(f)
+                        continue
+                elif isdir(f):
+                    if self.dirIsEmpty(f) and get_size(f) == 0:
+                        filelist.append(f)
+                        continue
         return list(set(filelist))
 
     def dirIsEmpty(self, path):
         """ Check for a directory's empty-ness
 
         :param path: Full path to a directory to check
-        :type path: Location
+        :type path: str
         :return: empty status
         :rtype: bool
         """
-        if exists(path.path) and isdir(path.path):
-            files = listdir(path.path)
-            return bool(not files)
-        raise OSError('Path is not valid: {0}'.format(path.path))
+        return bool(not listdir(path)) or not path.size
 
     def findNew(self, releases):
         """ Find any files that look "new", this means unsorted, not
@@ -467,7 +483,11 @@ class MSorter:
         :return: New files
         :rtype: filter
         """
-        return filter(self.isNew, releases)
+        new = []
+        for directory in releases:
+            if self.isNew(directory):
+                new.append(directory)
+        return new
 
     def _genPath(self, filename):
         """ Generate a path from the basepath
@@ -483,19 +503,19 @@ class MSorter:
         """ Find the parent path of the media folder supplied
 
         :param path: Base path to search from
-        :type path: str
+        :type path: Location
         :param dest: Optional default destination
         :type dest: str
         :param mtype: Optional default mediatype
         :type mtype: str
         :return: Found mediatype and destination
-        :rtype: bool, bool
+        :rtype: (bool, Location)
 
         """
         found = False
         for rule in self.rules:
             for rx in rule['rx']:
-                match = rx.search(path)
+                match = rx.search(path.path)
                 if match:
                     base = self.config.get('general', 'basepath')
                     if not rule['sorted']:
@@ -503,18 +523,19 @@ class MSorter:
                     else:
                         dest = join(base, rule['path'], match.groupdict()['name'])
                     mtype = rule['name']
-                    d = join(dest, path)
+                    d = join(dest, path.basename)
                     if exists(d):
                         return False, False
+                        # TODO Diff dir's semi intelligently
                         src = join(base, rule['path'], path)
                         d_size = get_size(d)
                         p_size = get_size(src)
                         if p_size == d_size:
-                            log.info('Removing duplicate directory: {0}'.format(src))
+                            self.log.info('Removing duplicate directory: {0}'.format(src))
                             rmtree(src)
                             return False, False
                         elif d_size < p_size:
-                            log.info('Removing smaller destination directory: {0}'.format(d))
+                            self.log.info('Removing smaller destination directory: {0}'.format(d))
                             rmtree(d)
                             found = True
                         else:
@@ -531,30 +552,33 @@ class MSorter:
                 if self.config.getboolean('general', 'commit'):
                     mkdirp(dest)
                 else:
-                    log.info('Skipped creating directory: {0}'.format(dest))
-            releasePath = join(self.basePath, path)
-            files = self.getReleaseFiles(releasePath)
+                    self.log.info('Skipped creating directory: {0}'.format(dest))
+            #releasePath = join(self.basePath, path)
+            files = self.getReleaseFiles(path)
             if any(map(self.isLocked, files)):
-                log.error("LOCKED!")
+                self.log.error("LOCKED!")
                 mtype, dest = False, False
             else:
-                log.debug("Found parent of {0} : {1}".format(releasePath, dest))
-            return mtype, dest
+                log.debug("Found parent of {0} : {1}".format(path, dest))
+            return mtype, Location(dest)
         else:
             return False, False
 
-    def getReleaseFiles(self, folder, filelist=[]):
+    def getReleaseFiles(self, folder, filelist=None):
         """ Get a list of files within the releases folder
 
         :param folder: Folder to look through
-        :type folder: str
+        :type folder: Location
         :param filelist: Optional list of files to append to
         :return: files found under the folder path
         :rtype: list
         """
-        if not exists(folder):
+        if not filelist:
+            filelist = []
+        if not exists(folder.path):
             raise OSError('Invalid path: {0}'.format(folder))
-        [ map(filelist.append, [ join(root, f) for f in files ]) for root, dirs, files in walk(folder) ]
+        for root, dirs, files in walk(folder.path):
+            filelist.extend([ join(root, f) for f in files ])
         return filelist
 
     def isLocked(self, filename):
@@ -574,6 +598,52 @@ class MSorter:
             log.exception(err)
             return True
 
+    def execute(self):
+        operations = self.filterNew()
+        total_size = sum((cs.source.size for cs in operations))
+        self.log.info('Total number of sorting changes: {0}'.format(len(operations)))
+        self.log.info('Total changeset size: {0}'.format(friendlysize(total_size)))
+        if self.config.getboolean('cleanup', 'enable', fallback=False):
+            cleanups = self.cleanup()
+            operations.extend(cleanups)
+        return operations
+
+    def cleanup(self):
+        operations = []
+        for section in self.config.filteredSections():
+            newPath = join(self.config.get('general', 'basepath'), self.config.get(section, 'path'))
+            for f in self.findCleanupFiles(newPath):
+                file_path = Location(join(newPath, f))
+                if self.config.getboolean('cleanup', 'delete_empty', fallback=False):
+                    if isdir(str(file_path)):
+                        if self.dirIsEmpty(file_path.path):
+                            oper = ChangeSet.remove(file_path)
+                            operations.append(oper)
+        return operations
+
+
+    def filterNew(self):
+        # Execute Full Program
+        #print(m.genFileList())
+        changes = []
+        for section in self.config.filteredSections():
+            newPath = join(self.config.get('general', 'basepath'), self.config.get(section, 'path'))
+            if not exists(newPath):
+                self.log.warn('Skipping invalid section path: {0}'.format(newPath))
+                continue
+            self.setBasePath(newPath)
+            self.log.info("Scanning {0}".format(newPath))
+            file_list = self.genFileList()
+            new_files = self.findNew(file_list)
+            filtered_files = self.filterIgnored(new_files)
+            for newp in filtered_files:
+                mtype, path = self.findParentDir(newp)
+                if mtype and path:
+                    src = newp
+                    dest = path
+                    changes.append(ChangeSet(src, dest))
+        return changes
+
 def parse_path(path):
     """ Parse a path into separate pieces
     This probably doesnt work very well under windows?
@@ -584,29 +654,6 @@ def parse_path(path):
     :rtype: list
     """
     return normpath(abspath(path)).split(sep)[1:]
-
-def mkdirppp(dest):
-    """ Emulate 'mkdir -p'
-
-    :param dest: Path to create
-    :type dest: str
-    :raise OSError: Anything but already exists
-    """
-    new = False
-    pcs = parse_path(dest)
-    for i, v in enumerate(pcs):
-        try:
-            d = "{0}{1}".format(sep, sep.join(pcs[:i+1]))
-            if not exists(d):
-                mkdir(d)
-                new = True
-        except OSError as err:
-            if err.args[0] == 17:
-                pass
-            else:
-                raise
-    if new:
-        self.log.info("Created dir: {0}".format(dest))
 
 def isOpen(filepath):
     pids=listdir('/proc')
