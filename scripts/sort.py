@@ -27,23 +27,23 @@ options, args = parser.parse_args()
 # Initialize
 defaultPath = expanduser("~/Music")
 path = argv[1] if len(argv) > 1 else defaultPath if exists(defaultPath) else expanduser("~/")
-c = Config()
+conf = Config()
 
 
 basicConfig(level=DEBUG)
 if options.debug:
     log.setLevel(DEBUG)
 if options.cleanup_empty:
-    c.set('cleanup', 'delete_empty', "true")
+    conf.set('cleanup', 'delete_empty', "true")
 if options.test:
-    c.set('general', 'commit', "false")
+    conf.set('general', 'commit', "false")
 if options.commit:
-    c.set('general', 'commit', "true")
+    conf.set('general', 'commit', "true")
 if options.test and options.commit:
     log.fatal("Please only chose one of test (-t) or commit (-c)")
     exit(2)
 if options.error:
-    c.set('general','error_continue', "true")
+    conf.set('general','error_continue', "true")
 
 if options.cleanup_empty:
     from shutil import rmtree
@@ -54,22 +54,22 @@ if options.cleanup_empty:
         rmtree(d)
     exit(0)
 if options.cleanup:
-    c.set('cleanup', 'enable', 'true')
+    conf.set('cleanup', 'enable', 'true')
 if options.addrule and not options.section:
     parser.error("-a (add) requires the -s (section) option to be set")
 if options.addrule and options.section:
-    c.addRule(options.section, options.addrule)
+    conf.addRule(options.section, options.addrule)
 if options.listrule and not options.section:
     parser.error("-l (list) requires the -s (section) option to be set")
 if options.listrule:
     log.info("Current regex pattern list ({0}):".format(options.section))
     log.info('+---+------------------------------------------------------------------------------------')
-    for name, pattern in c.getRuleList(options.section.lower()):
+    for name, pattern in conf.getRuleList(options.section.lower()):
         log.info('| {0} | {1} |'.format(name[2:], pattern))
     log.info('+---+------------------------------------------------------------------------------------')
     exit()
 try:
-    m = MSorter(config=c)
+    m = MSorter(config=conf)
     if args:
         for pa in args:
             if not exists(pa):
@@ -81,14 +81,14 @@ try:
             mediatype, parent = m.findParentDir(p)
             if mediatype and parent:
                 cs = ChangeSet(p, path)
-                cs(commit=c.getboolean('general', 'commit'))
+                cs(commit=conf.getboolean('general', 'commit'))
         exit()
     operations = m.execute()
     for i, op in enumerate(operations):
         try:
             if op.oper == 'remove':
                 total += stat(op.source).st_size
-            op(commit=c.commit)
+            op(commit=conf.commit)
         except KeyboardInterrupt:
             log.fatal("Caught Ctrl+C, Bailing early!")
             raise

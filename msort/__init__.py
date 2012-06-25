@@ -8,7 +8,20 @@ try:
 except ImportError:
     from ConfigParser import RawConfigParser, NoOptionError, NoSectionError
 from shutil import move
+from os import makedirs
 from logging import getLogger, Formatter, StreamHandler, INFO, basicConfig
+
+class MSortError(Exception):
+    pass
+
+
+
+
+
+
+
+
+
 
 def friendlysize(num):
     for x in ['bytes','KB','MB','GB','TB']:
@@ -188,7 +201,8 @@ rx1=.+?\.XXX\.
                 p = sep
                 for path in dirPath:
                     p = join(p, path)
-                mkdirp(p)
+                if not exists(p):
+                    makedirs(p)
                 with open(self.confPath, 'w') as f:
                     f.write(self._DEFAULT)
             except IOError as err:
@@ -253,7 +267,7 @@ rx1=.+?\.XXX\.
         """ Get a list of valid ruleset sections
 
         :return: Filtered sections
-        :rtype: filter
+        :rtype: check
         """
         return filter(lambda p: p not in self.skip, self.sections())
 
@@ -315,9 +329,9 @@ class Location:
     def __init__(self, *args, **kwargs):
         """ Initialize and optionally validate the path given
         
-        :param paths: N number of paramerters to be joined into a complete path
+        :param paths: N number of parameters to be joined into a complete path
         :type paths: string
-        :param validate: Check the exitence of the path
+        :param validate: Check the existence of the path
         :type validate: bool
         """
         path = ''
@@ -479,9 +493,9 @@ class MSorter:
         necessarily new files.
         
         :param releases: list of directories to look through
-        :type releases: list filter
+        :type releases: list check
         :return: New files
-        :rtype: filter
+        :rtype: check
         """
         new = []
         for directory in releases:
