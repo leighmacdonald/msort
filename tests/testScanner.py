@@ -1,12 +1,15 @@
 from os import makedirs
 from os.path import exists, join, dirname
 from shutil import rmtree
+from logging import basicConfig, DEBUG
 import unittest
 
 from msort.filesystem import DirectoryScanner
 from msort.check import DummyCheck
 from msort.check.empty import EmptyCheck
 from msort.check.release import ReleaseCheck
+
+basicConfig(level=DEBUG)
 
 class TestChecker(unittest.TestCase):
     def setUp(self):

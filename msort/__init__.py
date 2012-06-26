@@ -372,6 +372,9 @@ class Location:
         """
         return self.path
 
+    def __unicode__(self):
+        return self.path
+
 class MSorter:
     """
     Media sorting class

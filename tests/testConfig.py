@@ -3,16 +3,17 @@
 Author: Leigh MacDonald <leigh.macdonald@gmail.com>
 """
 from os import remove
+from os.path import join, dirname
 try:
     import unittest2 as unittest
 except ImportError:
     import unittest
-import msort
+from msort.conf import Config
 
 class ConfigTest(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.conf = msort.Config('~/.msort.test.conf')
+
+    def setUp(self):
+        self.conf = Config(config_path=join(dirname(__file__), 'msort_test.conf'))
 
     def testRegex(self):
         self.conf.getRules()
@@ -20,9 +21,6 @@ class ConfigTest(unittest.TestCase):
     def testParseRules(self):
         self.assertEqual(len(self.conf.sections()) - len(self.conf.skip),
                          len(self.conf.parseRules()))
-
-    def testInstantiateFailPath(self):
-        self.assertRaises(Exception, msort.Config, '/path/doesnt/exist')
 
     def testGetSafeOk(self):
         self.assertEqual('^\.(incomplete|lock|locked)', self.conf.getSafe('general','lock_pattern'))
@@ -39,20 +37,20 @@ class ConfigTest(unittest.TestCase):
         self.assertEqual(2, len(tv))
         self.assertEqual(1, len(xvid))
         tv.extend(xvid)
-        [self.assertEqual(r.__class__.__name__, 'SRE_Pattern') for r in tv]
+        [self.assertEqual(type(r).__name__, 'SRE_Pattern') for r in tv]
 
     def testAddRuleOk(self):
         self.conf.addRule('tv', '/rule/')
 
     def testGetRuleList(self):
         l = list(self.conf.getRuleList('tv'))
-        self.assertListEqual([('rx1', '(?P<name>.+?).S\\d{1,2}E\\d{1,2}'), ('rx2', '(?P<name>.+?).\\d{1,2}X\\d{2}')], l)
+        self.assertEqual([('rx1', '(?P<name>.+?).S\\d{1,2}E\\d{1,2}'), ('rx2', '(?P<name>.+?).\\d{1,2}X\\d{2}')], l)
 
     def testGetRuleListFail(self):
         self.assertRaises(ValueError, self.conf.getRuleList, 'INVALID')
         
     def testFilteredSections(self):
-        self.assertListEqual(['tv','xvid','dvdr','xxx'], list(self.conf.filteredSections()))
+        self.assertEqual(['tv', 'xxx', 'dvdr', 'xvid'], list(self.conf.filteredSections()))
 
     def testGetNextRxId(self):
         self.assertEqual('rx3', self.conf.getNextRxId('tv'))

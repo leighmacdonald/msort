@@ -160,6 +160,8 @@ class Config(object):
     def commit(self):
         return self._config.getboolean('general', 'commit')
 
+    def sections(self):
+        return self._config.sections()
 
 DEFAULT_CONF_FILE = """[general]
 basepath = /mnt/storage
