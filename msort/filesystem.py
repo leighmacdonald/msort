@@ -5,10 +5,11 @@ from logging import getLogger
 from msort.check import BaseCheck
 
 class DirectoryScanner(object):
-    _checks = []
 
-    def __init__(self):
+    def __init__(self, config):
         self.log = getLogger(__name__)
+        self._checks = []
+        self.conf = config
 
     def addChecker(self, checker):
         if not isinstance(checker, BaseCheck):
@@ -18,12 +19,14 @@ class DirectoryScanner(object):
         self._checks.append(checker)
         self.log.info('Added check: {0}'.format(checker.__class__.__name__))
 
-    def find(self, path):
+    def find(self, section):
+        path = self.conf.getSourcePath(section)
         found = []
         for file_name in [join(path, f) for f in listdir(path)]:
             for checker in self._checks:
-                if checker(file_name):
-                    found.append(file_name)
+                check_result = checker(section, file_name)
+                if check_result:
+                    found.append(check_result)
                     break
         return found
 

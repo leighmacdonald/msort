@@ -29,6 +29,8 @@ class MoveOperation(BaseOperation):
         except Exception as err:
             raise OperationError(err)
 
+    def __str__(self):
+        return '{0} {1} {2}'.format(self.__class__.__name__, self.source, self.destination)
 
 class DeleteOperation(BaseOperation):
     def __init__(self, path):

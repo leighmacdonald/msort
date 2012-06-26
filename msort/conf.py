@@ -1,8 +1,9 @@
 from ConfigParser import RawConfigParser, NoOptionError, NoSectionError
 from logging import getLogger
 from os import makedirs
-from os.path import expanduser, exists, dirname
+from os.path import expanduser, exists, dirname, join
 from re import IGNORECASE, compile as rxcompile
+
 class ConfigError(Exception):
     """
     Thrown on configuration issues
@@ -18,9 +19,9 @@ class Config(object):
     skip = ('general', 'ignored', 'logging', 'cleanup')
 
     # Static ConfigParser instance
-    _config = None
+    conf = None
 
-    def __init__(self, config_path="~/.msort.conf", skiplist=None):
+    def __init__(self, config_path="~/.msort.conf"):
         """ Initialize the configuration. If a existing one doesnt exit a new one will be created
         in, by default, the users home directory, unless otherwise specified by the configPath
         parameter
@@ -29,11 +30,12 @@ class Config(object):
         :param skip: List of filtered sections to skip when parsing for rules
         """
         self.log = getLogger(__name__)
-        if not self._config:
-            self._config = RawConfigParser()
+        if not self.conf:
+            self.conf = RawConfigParser()
             config_path = expanduser(config_path)
-            self._initConfigPath(config_path)
-            self._config.read(config_path)
+            #self._initConfigPath(config_path)
+            self.log.debug('Reading config: {0}'.format(config_path))
+            self.conf.read(config_path)
             self._rules = self.parseRules()
 
     def _initConfigPath(self, config_file):
@@ -66,8 +68,9 @@ class Config(object):
         for section in self.filteredSections():
             conf.append({
                 'name'   : section,
-                'path'   : self._config.get(section, 'path'),
-                'sorted' : self._config.getboolean(section, 'sorted'),
+                'source' : self.conf.get(section, 'source'),
+                'dest'   : self.conf.get(section, 'dest'),
+                'sorted' : self.conf.getboolean(section, 'sorted'),
                 'rx'     : self.getSectionRegex(section)
             })
         if conf:
@@ -87,8 +90,8 @@ class Config(object):
         :rtype: list
         """
         regexList = []
-        if self._config.has_section(section):
-            for item, value in self._rxFilter(self._config.items(section)):
+        if self.conf.has_section(section):
+            for item, value in self._rxFilter(self.conf.items(section)):
                 regexList.append(rxcompile(value, IGNORECASE))
         return regexList
 
@@ -107,7 +110,7 @@ class Config(object):
         :return: Filtered sections
         :rtype: check
         """
-        return filter(lambda p: p not in self.skip, self._config.sections())
+        return filter(lambda p: p not in self.skip, self.conf.sections())
 
     def getNextRxId(self, section, findid=1):
         """
@@ -119,7 +122,7 @@ class Config(object):
         :return: section regex key
         :rtype: string
         """
-        while 'rx{0}'.format(findid) in [id for id, value in self._rxFilter(self._config.items(section))]:
+        while 'rx{0}'.format(findid) in [id for id, value in self._rxFilter(self.conf.items(section))]:
             findid += 1
         return 'rx{0}'.format(findid)
 
@@ -133,8 +136,8 @@ class Config(object):
         :return: config value
         :rtype: string
         """
-        if self._config.has_section(section) and self._config.has_option(section, option):
-            return self._config.get(section, option)
+        if self.conf.has_section(section) and self.conf.has_option(section, option):
+            return self.conf.get(section, option)
         return default
 
     def addRule(self, section, rule):
@@ -153,15 +156,27 @@ class Config(object):
     def getRuleList(self, section):
         if not section in self.filteredSections():
             raise ValueError('Invalid section given')
-        secs = self._rxFilter(self._config.items(section))
+        secs = self._rxFilter(self.conf.items(section))
         return secs
 
     @property
     def commit(self):
-        return self._config.getboolean('general', 'commit')
+        return self.conf.getboolean('general', 'commit')
 
     def sections(self):
-        return self._config.sections()
+        return self.conf.sections()
+
+    def getSourcePath(self, section):
+        return self.conf.get(section, 'source')
+
+    def getDestPath(self, section, filename=None):
+        return join(self.conf.get(section, 'dest'), filename if filename else '')
+
+    def isSorted(self, section):
+        try:
+            return self.conf.getboolean(section, 'sorted')
+        except Exception:
+            return False
 
 DEFAULT_CONF_FILE = """[general]
 basepath = /mnt/storage
@@ -204,9 +219,4 @@ source = /mnt/storage/XVID
 dest = /mnt/storage/DVDR
 sorted=false
 rx1=.+?(PAL|NTSC).DVDR
-
-[xxx]
-path=XXX
-sorted=false
-rx1=.+?\.XXX\.
 """
