@@ -4,12 +4,15 @@ from msort.check import BaseCheck
 from msort.operation import MoveOperation
 
 class ReleaseCheck(BaseCheck):
+    """
+    This check will do matching against release names folders and the regex rules
+    defined in the config.
+    """
 
     _rules = {}
 
     def __init__(self, config):
         super(ReleaseCheck, self).__init__(config)
-
         sections = self.conf.filteredSections()
         for section in sections:
             rules = self.conf.getRuleList(section)

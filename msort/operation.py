@@ -46,3 +46,6 @@ class DeleteOperation(BaseOperation):
             self.log.info('Removed file: {0}'.format(self.source))
         else:
             raise OperationError('Invalid path type, must be dir or file: {0}'.format(self.source))
+
+    def __str__(self):
+        return '{0} {1}'.format(self.__class__.__name__, self.source)

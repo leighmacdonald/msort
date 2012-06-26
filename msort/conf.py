@@ -110,7 +110,13 @@ class Config(object):
         :return: Filtered sections
         :rtype: check
         """
-        return filter(lambda p: p not in self.skip, self.conf.sections())
+        return filter(lambda s: not s in self.skip and self.sectionEnabled(s), self.conf.sections())
+
+    def sectionEnabled(self, section):
+        try:
+            return self.conf.getboolean(section, 'enabled')
+        except Exception as err:
+            return True
 
     def getNextRxId(self, section, findid=1):
         """

@@ -5,13 +5,15 @@ from logging import getLogger
 from msort.check import BaseCheck
 
 class DirectoryScanner(object):
-
+    """
+    High-Level Class used to scan and check paths using the registered checkers
+    """
     def __init__(self, config):
         self.log = getLogger(__name__)
         self._checks = []
         self.conf = config
 
-    def addChecker(self, checker):
+    def registerChecker(self, checker):
         if not isinstance(checker, BaseCheck):
             raise TypeError('Checker passed must be a instance of BaseCheck')
         if checker.__class__.__name__ in [c.__class__.__name__ for c in self._checks]:

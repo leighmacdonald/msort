@@ -62,7 +62,7 @@ class TestScanner(unittest.TestCase):
 
     def testReleaseCheck(self):
         scanner = DirectoryScanner(conf)
-        scanner.addChecker(ReleaseCheck(conf))
+        scanner.registerChecker(ReleaseCheck(conf))
         changes = {}
         for section in self.sections:
             changes[section] = scanner.find(section)
@@ -72,7 +72,7 @@ class TestScanner(unittest.TestCase):
 
     def testEmptyCheck(self):
         scanner = DirectoryScanner(conf)
-        scanner.addChecker(EmptyCheck(conf))
+        scanner.registerChecker(EmptyCheck(conf))
         changes = []
         for section in self.sections:
             changes.extend(scanner.find(section))
@@ -80,6 +80,6 @@ class TestScanner(unittest.TestCase):
 
     def testDupeChecks(self):
         scanner = DirectoryScanner(conf)
-        scanner.addChecker(DummyCheck(conf))
-        scanner.addChecker(DummyCheck(conf))
+        scanner.registerChecker(DummyCheck(conf))
+        scanner.registerChecker(DummyCheck(conf))
         self.assertTrue(len(scanner._checks) == 2)
