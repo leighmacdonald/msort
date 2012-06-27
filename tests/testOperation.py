@@ -26,3 +26,6 @@ class TestOperations(unittest.TestCase):
     def testDeleteOperation(self):
         DeleteOperation(self.file)()
         self.assertFalse(exists(self.file))
+
+if __name__ == '__main__':
+    unittest.main()

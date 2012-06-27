@@ -4,7 +4,7 @@ Author: Leigh MacDonald <leigh.macdonald@gmail.com>
 """
 from unittest import TextTestRunner, TestLoader
 from glob import glob
-from os.path import splitext, basename, join as pjoin
+from os.path import splitext, basename, join
 from os import getcwd
 try:
     from os.path import walk
@@ -27,24 +27,20 @@ class TestCommand(Command):
         Finds all the tests modules in tests/, and runs them.
         """
         testfiles = [ ]
-        for t in glob(pjoin(self._dir, 'tests', '*.py')):
-            if not t.endswith('__init__.py'):
-                testfiles.append('.'.join(
-                    ['tests', splitext(basename(t))[0]])
-                )
-
+        for t in filter(lambda f: not f.endswith('__init__.py'), glob(join(self._dir, 'tests', '*.py'))):
+            testfiles.append('.'.join(['tests', splitext(basename(t))[0]]))
         tests = TestLoader().loadTestsFromNames(testfiles)
         t = TextTestRunner(verbosity = 1)
         t.run(tests)
 setup(
     name='msort',
-    version='1.0',
-    description='utility for sorting scene releases into grouped subfolders',
+    version='2.0',
+    description='Utility for sorting scene releases into grouped subfolders',
     author='Leigh MacDonald',
     author_email='leigh@cudd.li',
     url='https://msort.cudd.li/',
     packages=['msort'],
-    scripts=['scripts/sort.py'],
+    scripts=['mediasort.py'],
     cmdclass = { 'test': TestCommand },
     classifiers=[
         'Development Status :: 5 - Production/Stable',

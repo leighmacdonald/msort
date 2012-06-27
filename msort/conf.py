@@ -26,8 +26,8 @@ class Config(object):
         in, by default, the users home directory, unless otherwise specified by the configPath
         parameter
 
-        :param configPath: Location of the config file
-        :param skip: List of filtered sections to skip when parsing for rules
+        :param config_path: Location of the config file
+        :type config_path: str
         """
         self.log = getLogger(__name__)
         if not self.conf:
@@ -101,24 +101,30 @@ class Config(object):
         return filter(lambda s: not s in self.skip and self.sectionEnabled(s), self.conf.sections())
 
     def sectionEnabled(self, section):
+        """ Fetch and return the "enabled" status of the supplied section.
+
+        :param section: Section Key
+        :type section: str
+        :return: Enabled status
+        :rtype: bool
+        """
         try:
             return self.conf.getboolean(section, 'enabled')
         except Exception as err:
             return True
 
-    def getNextRxId(self, section, findid=1):
+    def getNextRxId(self, section, find_id=1):
         """
         Return the next available free regex item key
-        :param findid: Starting index
-        :type findid: int
+        :param find_id: Starting index
+        :type find_id: int
         :param section: Section to look through
         :type section: string
         :return: section regex key
         :rtype: string
         """
-        while 'rx{0}'.format(findid) in [id for id, value in self._rxFilter(self.conf.items(section))]:
-            findid += 1
-        return 'rx{0}'.format(findid)
+        while 'rx{0}'.format(find_id) in [id for id, _ in self._rxFilter(self.conf.items(section))]: find_id += 1
+        return 'rx{0}'.format(find_id)
 
     def getSafe(self, section, option, default=False):
         """ Get a config value providing a default value if it doesnt exist

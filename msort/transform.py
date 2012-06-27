@@ -10,13 +10,21 @@ def ucfirst(word):
     else:
         return word
 
-
-
 def cleanup(word, sep='.'):
+    """ This function will take several steps to attempt to "clean" the input string to a
+     more usable and uniform format.
+
+     It currently does the following steps:
+
+
+    :param word: String of words to clean
+    :type word: str
+    :param sep: Separator character to use
+    :type sep: str
+    :return: Cleaned and formatted string
+    :rtype: str
+    """
     word = sep.join(split_uc_words(word))
-#    w = sep.join(word.split()).replace('-', sep)
-#    w = w.replace('-', sep)
-#    w = sep.join(sep.join(word.split()).replace('-', sep).split(sep))
     w = re.sub('\{0}+'.format(sep), sep, sep.join(sep.join(word.split()).replace('-', sep).split(sep)))
     if w.endswith(sep):
         w = w[0:len(w)-1]

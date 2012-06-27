@@ -2,8 +2,7 @@
 """
 Author: Leigh MacDonald <leigh.macdonald@gmail.com>
 """
-from os import remove
-from os.path import join, dirname, exists
+from os.path import join, dirname
 try:
     import unittest2 as unittest
 except ImportError:
@@ -59,3 +58,6 @@ class ConfigTest(unittest.TestCase):
     def testSortedMissing(self):
         self.assertFalse(self.conf.conf.has_option('BAD_TEST', 'sorted'))
         self.assertFalse(self.conf.isSorted('BAD_TEST'))
+
+if __name__ == '__main__':
+    unittest.main()
