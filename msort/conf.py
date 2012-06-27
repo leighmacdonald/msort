@@ -33,21 +33,9 @@ class Config(object):
         if not self.conf:
             self.conf = RawConfigParser()
             config_path = expanduser(config_path)
-            #self._initConfigPath(config_path)
             self.log.debug('Reading config: {0}'.format(config_path))
             self.conf.read(config_path)
             self._rules = self.parseRules()
-
-    def _initConfigPath(self, config_file):
-        if not exists(config_file):
-            config_directory = dirname(config_file)
-            try:
-                if not exists(config_directory):
-                    makedirs(config_directory)
-                with open(config_file, 'w') as f:
-                    f.write(DEFAULT_CONF_FILE)
-            except (IOError, OSError) as err:
-                raise ConfigError('Cannot create configuration base directory {0}'.format(config_directory))
 
     def getRules(self):
         """Return the loaded ruleset
