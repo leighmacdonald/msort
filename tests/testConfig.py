@@ -55,3 +55,7 @@ class ConfigTest(unittest.TestCase):
 
     def testGetNextRxId(self):
         self.assertEqual('rx3', self.conf.getNextRxId('TV'))
+
+    def testSortedMissing(self):
+        self.assertFalse(self.conf.conf.has_option('BAD_TEST', 'sorted'))
+        self.assertFalse(self.conf.isSorted('BAD_TEST'))
