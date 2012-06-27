@@ -14,7 +14,10 @@ options, args = parser.parse_args()
 
 # Setup Logger
 log_level = DEBUG if options.debug else INFO
-basicConfig(level=log_level)
+if log_level == DEBUG:
+    basicConfig(level=log_level)
+else:
+    basicConfig(level=log_level, format='%(message)s')
 log = getLogger(__name__)
 log.info('Initializing!')
 
