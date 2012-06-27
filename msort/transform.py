@@ -3,7 +3,10 @@ def upperwords(word):
     return '.'.join(map(ucfirst, word.split('.')))
 
 def ucfirst(word):
-    return word[0].upper() + word[1:]
+    if len(word) == 1: return word.upper()
+    elif len(word) >= 2: return word[0].upper() + word[1:]
+    else: return ''
+
 
 
 def cleanup(word, sep='.'):
