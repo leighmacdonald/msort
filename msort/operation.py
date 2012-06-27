@@ -1,7 +1,7 @@
 from os import remove
 from os.path import isfile, isdir
 from shutil import move, rmtree
-from logging import getLogger
+from msort.log import getLogger
 from msort import MSortError
 
 class OperationError(MSortError):

@@ -1,11 +1,14 @@
 #!/usr/bin/python
 from __future__ import print_function
-from logging import basicConfig, DEBUG, INFO, getLogger
+from logging import basicConfig, DEBUG, INFO
 from optparse import OptionParser
+
 from msort.conf import Config
+from msort.log import getLogger
 from msort.filesystem import DirectoryScanner
 from msort.check.empty import EmptyCheck
 from msort.check.release import ReleaseCheck
+
 
 parser = OptionParser(version='2.0')
 parser.add_option('-d', '--debug', dest="debug", action="store_true", default=False, help="Enable debugging output level")
@@ -13,13 +16,15 @@ parser.add_option('-d', '--debug', dest="debug", action="store_true", default=Fa
 options, args = parser.parse_args()
 
 # Setup Logger
-log_level = DEBUG if options.debug else INFO
-if log_level == DEBUG:
-    basicConfig(level=log_level)
-else:
-    basicConfig(level=log_level, format='%(message)s')
 log = getLogger(__name__)
-log.info('Initializing!')
+log_level = DEBUG if options.debug else INFO
+log.setLevel(log_level)
+#if log_level == DEBUG:
+#    basicConfig(level=log_level)
+#else:
+#    log.setLevel(log_level)
+basicConfig(level=log_level, format='%(message)s')
+
 
 conf = Config()
 

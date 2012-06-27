@@ -1,8 +1,8 @@
-from ConfigParser import RawConfigParser, NoOptionError, NoSectionError
-from logging import getLogger
-from os import makedirs
-from os.path import expanduser, exists, dirname, join
+from ConfigParser import RawConfigParser
+from os.path import expanduser, join
 from re import IGNORECASE, compile as rxcompile
+
+from msort.log import getLogger
 
 class ConfigError(Exception):
     """

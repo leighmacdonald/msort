@@ -1,7 +1,7 @@
 from collections import namedtuple
 from os import statvfs, listdir
 from os.path import join, getsize, isdir, isfile
-from logging import getLogger
+from msort.log import getLogger
 from msort.check import BaseCheck
 
 class DirectoryScanner(object):
