@@ -27,6 +27,9 @@ sections = conf.filteredSections()
 changes = {}
 for section in sections:
     changes[section] = scanner.find(section)
+total_changes = sum([len(x) for x in changes.values()])
+log.info('Found {0} total changes to be executed'.format(total_changes))
+
 for key, value in changes.items():
     for c in value:
         log.debug(c)

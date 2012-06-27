@@ -2,6 +2,7 @@ import re
 from os.path import basename, join
 from msort.check import BaseCheck
 from msort.operation import MoveOperation
+from msort.transform import cleanup
 
 class ReleaseCheck(BaseCheck):
     """
@@ -27,7 +28,7 @@ class ReleaseCheck(BaseCheck):
                     try:
                         if self.conf.isSorted(section):
                             full_name = match.groupdict()['name']
-                            parsed_name = basename(full_name)
+                            parsed_name = cleanup(basename(full_name))
                             dest = self.conf.getDestPath(section, parsed_name)
                             return MoveOperation(path, dest)
                         else:

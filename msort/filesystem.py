@@ -46,7 +46,7 @@ class DirectoryScanner(object):
             for checker in self._checks:
                 check_result = checker(section, file_name)
                 if check_result:
-                    self.log.info('Check matached: {0}'.format(check_result))
+                    self.log.info('Check matched: {0}'.format(check_result))
                     found.append(check_result)
                     break
         return found
