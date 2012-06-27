@@ -4,7 +4,7 @@ from msort import transform
 class TransformTest(unittest.TestCase):
     def test_splitucwords(self):
         s = 'RegularShow'
-        self.assertEqual(['Regular','Show'], transform.splitucwords(s))
+        self.assertEqual(['Regular','Show'], transform.split_uc_words(s))
 
     def test_ucfirst(self):
         self.assertEqual('Lower', transform.ucfirst('lower'))

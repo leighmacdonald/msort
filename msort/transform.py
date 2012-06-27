@@ -15,13 +15,24 @@ def cleanup(word, sep='.'):
         w = w[0:len(w)-1]
     return upperwords(w)
 
-def splitucwords(words):
+def split_uc_words(words):
+    """ Split a string using a forward look-ahead for upper case letters to act as word
+    boundaries. If while iterating the next character will be upper case or if the current character is the last
+    of the given string, then mark that as the end of the current word and add is to the new_words list to be
+    returned.
+
+    :param words: String of upper cased words to split eg: LongStringName
+    :type words: string
+    :return: List of words found eg: ['Long', 'String', 'Name']
+    :rtype: list
+    """
     size = len(words)-1
     new_words = []
     tmp_word = ''
     for i, c in enumerate(words):
         if i == 0 or c.isupper():
-            tmp_word += c
+            # Make sure the first character is capitalized
+            tmp_word += c.upper()
         else:
             if i+1 <= size:
                 if words[i+1].isupper():
