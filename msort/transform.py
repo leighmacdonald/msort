@@ -7,9 +7,10 @@ def ucfirst(word):
 
 
 def cleanup(word, sep='.'):
-    w = sep.join(word.split()).replace('-', sep)
-    w = w.replace('-', sep)
-    w = sep.join(sep.join(word.split()).replace('-', sep).split(sep))
+    word = sep.join(split_uc_words(word))
+#    w = sep.join(word.split()).replace('-', sep)
+#    w = w.replace('-', sep)
+#    w = sep.join(sep.join(word.split()).replace('-', sep).split(sep))
     w = re.sub('\{0}+'.format(sep), sep, sep.join(sep.join(word.split()).replace('-', sep).split(sep)))
     if w.endswith(sep):
         w = w[0:len(w)-1]

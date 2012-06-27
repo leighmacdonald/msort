@@ -29,6 +29,7 @@ class ReleaseCheck(BaseCheck):
                         if self.conf.isSorted(section):
                             full_name = match.groupdict()['name']
                             parsed_name = cleanup(basename(full_name))
+
                             dest = self.conf.getDestPath(section, parsed_name)
                             return MoveOperation(path, dest)
                         else:

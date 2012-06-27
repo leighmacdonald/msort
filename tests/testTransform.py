@@ -20,5 +20,9 @@ class TransformTest(unittest.TestCase):
         res = transform.cleanup('Adventure Time - 4x07 - In Your Footsteps.')
         self.assertEqual('Adventure.Time.4x07.In.Your.Footsteps', res)
 
+    def test_cleanup_two(self):
+        res = transform.cleanup('RegularShow.s03e16.ButtDial.mp4')
+        self.assertEqual('Regular.Show.S03e16.Butt.Dial.Mp4', res)
+
 if __name__ == '__main__':
     unittest.main()
