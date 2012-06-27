@@ -22,6 +22,8 @@ class TestScanner(unittest.TestCase):
             'XVID/Not.Another.Not.Another.Movie.2011.HDRip.XVID.AC3.HQ.Hive-CM8',
             'TV/History.of.ECW.1997.11.04.PDTV.XviD-W4F',
             'TV/file.avi',
+            'TV/NOVA.S39E16.480p.HDTV.x264-mSD.mkv',
+            'TV/RegularShow.s03e16.ButtDial.mp4',
             'TV/Crave.S01E01.HDTV.XviD-SYS',
             'X264/The.Terrorist.2010.720p.BluRay.x264-aAF',
             'XVID/TrollHunter.2010.LiMiTED.BDRip.XviD-NODLABS',
@@ -68,7 +70,7 @@ class TestScanner(unittest.TestCase):
             changes[section] = scanner.find(section)
         self.assertEquals(len(changes['DVDR']), 2)
         self.assertEquals(len(changes['XVID']), 2)
-        self.assertEquals(len(changes['TV']), 4)
+        self.assertEquals(len(changes['TV']), 6)
 
     def testEmptyCheck(self):
         scanner = DirectoryScanner(conf)

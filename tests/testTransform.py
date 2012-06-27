@@ -24,5 +24,9 @@ class TransformTest(unittest.TestCase):
         res = transform.cleanup('RegularShow.s03e16.ButtDial.mp4')
         self.assertEqual('Regular.Show.S03e16.Butt.Dial.Mp4', res)
 
+    def test_cleanup_upper(self):
+        res = transform.split_uc_words('NOVA.S39E16.480p.HDTV.x264-mSD.mkv')
+        self.assertEqual('NOVA', res[0])
+
 if __name__ == '__main__':
     unittest.main()

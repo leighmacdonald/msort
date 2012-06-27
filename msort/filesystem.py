@@ -101,3 +101,6 @@ def dir_size(folder):
         elif isdir(itempath):
             total_size += dir_size(itempath)
     return total_size
+
+
+

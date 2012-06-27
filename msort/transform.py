@@ -3,9 +3,12 @@ def upperwords(word):
     return '.'.join(map(ucfirst, word.split('.')))
 
 def ucfirst(word):
-    if len(word) == 1: return word.upper()
-    elif len(word) >= 2: return word[0].upper() + word[1:]
-    else: return ''
+    if word:
+        if len(word) == 1: return word.upper()
+        elif len(word) >= 2: return word[0].upper() + word[1:]
+        else: return ''
+    else:
+        return word
 
 
 
@@ -39,7 +42,10 @@ def split_uc_words(words):
             tmp_word += c.upper()
         else:
             if i+1 <= size:
-                if words[i+1].isupper():
+                if c in ['.', ' ']:
+                    new_words.append(tmp_word)
+                    tmp_word = ''
+                elif words[i+1].isupper():
                     # Next character is uppercase, so this is the end of the current word
                     tmp_word += c
                     new_words.append(tmp_word)
