@@ -1,5 +1,5 @@
 from ConfigParser import RawConfigParser
-from os.path import expanduser, join
+from os.path import expanduser, join, exists
 from re import IGNORECASE, compile as rxcompile
 
 from msort.log import getLogger
@@ -31,8 +31,10 @@ class Config(object):
         """
         self.log = getLogger(__name__)
         if not self.conf:
-            self.conf = RawConfigParser()
             config_path = expanduser(config_path)
+            if not exists(config_path):
+                raise ConfigError('Invalid config file, doesnt exist: {0}'.format(config_path))
+            self.conf = RawConfigParser()
             self.log.debug('Reading config: {0}'.format(config_path))
             self.conf.read(config_path)
             self._rules = self.parseRules()

@@ -14,11 +14,9 @@ class ReleaseCheck(BaseCheck):
 
     def __init__(self, config):
         super(ReleaseCheck, self).__init__(config)
-        sections = self.conf.filteredSections()
-        for section in sections:
+        for section in self.conf.filteredSections():
             rules = self.conf.getRuleList(section)
             self._rules[section] = [re.compile(pat, re.I) for _, pat in rules]
-        self.log.debug(sections)
 
     def __call__(self, section, path):
         try:
@@ -29,7 +27,6 @@ class ReleaseCheck(BaseCheck):
                         if self.conf.isSorted(section):
                             full_name = match.groupdict()['name']
                             parsed_name = cleanup(basename(full_name))
-
                             dest = self.conf.getDestPath(section, parsed_name)
                             return MoveOperation(path, dest)
                         else:

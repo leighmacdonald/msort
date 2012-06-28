@@ -1,4 +1,4 @@
-from os import makedirs
+from os import makedirs, link, unlink
 from os.path import exists, join, dirname
 from shutil import rmtree
 from logging import basicConfig, DEBUG
@@ -50,6 +50,9 @@ class TestScanner(unittest.TestCase):
             except Exception as err:
                 pass
         try:
+            link(join(self.root_path, 'TV/file.avi'), join(self.root_path, 'TV/file-link.avi'))
+        except : pass
+        try:
             # Empty dir check
             makedirs(join(self.root_path, 'TV/Top.Gear.17x06.HDTV.XviD-FoV'))
         except: pass
@@ -60,6 +63,9 @@ class TestScanner(unittest.TestCase):
 
 
     def tearDown(self):
+        try:
+            unlink('TV/file-link.avi')
+        except : pass
         rmtree(self.root_path)
 
     def testReleaseCheck(self):

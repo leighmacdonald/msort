@@ -8,7 +8,7 @@ try:
 
         # Some basic colour scheme defaults
         colours = {
-            'DEBUG' : Fore.CYAN,
+            'DEBUG' : Fore.CYAN + Style.DIM,
             'INFO' : Fore.GREEN,
             'WARN' : Fore.YELLOW,
             'WARNING': Fore.YELLOW,
@@ -60,9 +60,7 @@ def getLogger(name=None, fmt='%(message)s'):
     log = realGetLogger(name)
     # Only enable colour if support was loaded properly
     handler = ColourStreamHandler() if has_colour else StreamHandler()
-    handler.setLevel(DEBUG)
     handler.setFormatter(Formatter(fmt))
     log.addHandler(handler)
-    log.setLevel(DEBUG)
     log.propagate = 0 # Don't bubble up to the root logger
     return log

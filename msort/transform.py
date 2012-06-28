@@ -25,6 +25,7 @@ def cleanup(word, sep='.'):
     :rtype: str
     """
     word = sep.join(split_uc_words(word))
+    word = word.replace('\'', '')
     w = re.sub('\{0}+'.format(sep), sep, sep.join(sep.join(word.split()).replace('-', sep).split(sep)))
     if w.endswith(sep):
         w = w[0:len(w)-1]

@@ -2,7 +2,7 @@ from collections import namedtuple
 from os import statvfs, listdir
 from os.path import join, getsize, isdir, isfile
 from msort.log import getLogger
-from msort.check import BaseCheck
+from msort.check import BaseCheck, CheckError, CheckSkip
 
 class DirectoryScanner(object):
     """
@@ -40,15 +40,24 @@ class DirectoryScanner(object):
         """
         path = self.conf.getSourcePath(section)
         found = []
-        self.log.info('Starting scan of section {0}: {1}'.format(section, path))
-        for file_name in [join(path, f) for f in listdir(path)]:
+        self.log.warn('Starting scan of section {0}: {1}'.format(section, path))
+        for file_name in sorted([join(path, f) for f in listdir(path)]):
             self.log.debug('Scanning file: {0}'.format(file_name))
             for checker in self._checks:
-                check_result = checker(section, file_name)
-                if check_result:
-                    self.log.info('Check matched: {0}'.format(check_result))
-                    found.append(check_result)
-                    break
+                try:
+                    check_result = checker(section, file_name)
+                except CheckSkip as err:
+                    self.log.warn(err)
+                    continue
+                except CheckError as err:
+                    if not self.conf.getboolean('general', 'error_continue'):
+                        raise err
+                    self.log.error(err)
+                else:
+                    if check_result:
+                        self.log.info('Check matched: {0}'.format(check_result))
+                        found.append(check_result)
+                        break
         return found
 
 _ntuple_diskusage = namedtuple('usage', 'total used free')
