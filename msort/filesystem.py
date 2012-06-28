@@ -53,6 +53,7 @@ class DirectoryScanner(object):
                     if not self.conf.getboolean('general', 'error_continue'):
                         raise err
                     self.log.error(err)
+                    continue
                 else:
                     if check_result:
                         self.log.info('Check matched: {0}'.format(check_result))

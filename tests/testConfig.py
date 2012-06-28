@@ -7,7 +7,7 @@ try:
     import unittest2 as unittest
 except ImportError:
     import unittest
-from msort.conf import Config
+from msort.conf import Config, ConfigError
 
 class ConfigTest(unittest.TestCase):
 
@@ -17,6 +17,9 @@ class ConfigTest(unittest.TestCase):
 
     def testRegex(self):
         self.conf.getRules()
+
+    def testInvalidConfigPath(self):
+        self.assertRaises(ConfigError, Config, 'asdfasdf')
 
     def testParseRules(self):
         self.assertEqual(len(self.conf.sections()) - len(self.conf.skip),
@@ -58,6 +61,7 @@ class ConfigTest(unittest.TestCase):
     def testSortedMissing(self):
         self.assertFalse(self.conf.conf.has_option('BAD_TEST', 'sorted'))
         self.assertFalse(self.conf.isSorted('BAD_TEST'))
+
 
 if __name__ == '__main__':
     unittest.main()

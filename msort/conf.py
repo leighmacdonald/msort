@@ -64,9 +64,7 @@ class Config(object):
                 'rx'     : self.getSectionRegex(section)
             })
         if conf:
-            self.log.debug("Loaded {0} rule sections and {1} rules.".format(
-                len(conf), sum([len(r['rx']) for r in conf]))
-            )
+            self.log.debug("Loaded {0} rule sections and {1} rules.".format(len(conf), sum([len(r['rx']) for r in conf])))
         return conf
 
     def getSectionRegex(self, section):
@@ -160,10 +158,6 @@ class Config(object):
             raise ValueError('Invalid section given')
         secs = self._rxFilter(self.conf.items(section))
         return secs
-
-    @property
-    def commit(self):
-        return self.conf.getboolean('general', 'commit')
 
     def sections(self):
         return self.conf.sections()
