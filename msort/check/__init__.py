@@ -1,4 +1,12 @@
-from logging import getLogger
+from msort.log import getLogger
+
+from msort import MSortError
+
+class CheckError(MSortError):
+    pass
+
+class CheckSkip(CheckError):
+    pass
 
 class BaseCheck(object):
     """
