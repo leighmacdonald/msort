@@ -34,6 +34,9 @@ class ReleaseCheck(BaseCheck):
                             return MoveOperation(path, dest)
                         else:
                             dest = self.conf.getDestPath(section)
+                            if join(dest, basename(path)) == path:
+                                # Make sure the final destination isnt the same as the given path
+                                return False
                         return MoveOperation(path, dest)
                     except KeyError:
                         self.log.warn('Pattern matched, but no "name" group was found')

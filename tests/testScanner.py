@@ -19,17 +19,17 @@ class TestScanner(unittest.TestCase):
             'TestFolder',
             'TV/Entourage.S08E06.HDTV.Custom.HebSub.XviD-Extinct',
             'TV/Bridezillas.S08E12.DSR.XviD-OMiCRON',
-            'XVID/Not.Another.Not.Another.Movie.2011.HDRip.XVID.AC3.HQ.Hive-CM8',
+            'SRC_XVID/Not.Another.Not.Another.Movie.2011.HDRip.XVID.AC3.HQ.Hive-CM8',
             'TV/History.of.ECW.1997.11.04.PDTV.XviD-W4F',
             'TV/file.avi',
             'TV/NOVA.S39E16.480p.HDTV.x264-mSD.mkv',
             'TV/RegularShow.s03e16.ButtDial.mp4',
             'TV/Crave.S01E01.HDTV.XviD-SYS',
-            'X264/The.Terrorist.2010.720p.BluRay.x264-aAF',
-            'XVID/TrollHunter.2010.LiMiTED.BDRip.XviD-NODLABS',
-            'XVID/Tyler.Perrys.Laugh.To.Keep.From.Crying.2009.DVDRip.XviD-IGUANA',
-            'DVDR/Blah.Blah.XXX.NTSC.DVDR-EvilAngel',
-            'DVDR/Feed.The.Fish.LIMITED.R2.PAL.DVDR-TARGET',
+            'SRC_X264/The.Terrorist.2010.720p.BluRay.x264-aAF',
+            'SRC_XVID/TrollHunter.2010.LiMiTED.BDRip.XviD-NODLABS',
+            'SRC_XVID/Tyler.Perrys.Laugh.To.Keep.From.Crying.2009.DVDRip.XviD-IGUANA',
+            'SRC_DVDR/Blah.Blah.XXX.NTSC.DVDR-EvilAngel',
+            'SRC_DVDR/Feed.The.Fish.LIMITED.R2.PAL.DVDR-TARGET',
         ]
         self.sections = ('TV', 'XVID', 'DVDR')
         write_data = 'x'*10000000

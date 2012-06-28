@@ -36,7 +36,7 @@ def split_uc_words(words):
     of the given string, then mark that as the end of the current word and add is to the new_words list to be
     returned.
 
-    :param words: String of upper cased words to split eg: LongStringName
+    :param words: String of upper cased words to split eg. LongStringName
     :type words: string
     :return: List of words found eg: ['Long', 'String', 'Name']
     :rtype: list
