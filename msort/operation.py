@@ -1,8 +1,10 @@
 from os import remove
 from os.path import isfile, isdir
 from shutil import move, rmtree
+
 from msort.log import getLogger
 from msort import MSortError
+from msort.filesystem import dir_size, fmt_size
 
 class OperationError(MSortError):
     pass
@@ -36,6 +38,7 @@ class DeleteOperation(BaseOperation):
     def __init__(self, path):
         BaseOperation.__init__(self)
         self.source = path
+        self.size = None
 
     def __call__(self):
         if isdir(self.source):
@@ -48,4 +51,6 @@ class DeleteOperation(BaseOperation):
             raise OperationError('Invalid path type, must be dir or file: {0}'.format(self.source))
 
     def __str__(self):
-        return '{0} {1}'.format(self.__class__.__name__, self.source)
+        if not self.size:
+            self.size = dir_size(self.source)
+        return '{0} ({1}) {2}'.format(fmt_size(self.size), self.__class__.__name__, self.source)
