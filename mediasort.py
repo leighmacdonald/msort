@@ -10,7 +10,9 @@ from msort.check.empty import EmptyCheck
 from msort.check.release import ReleaseCheck
 from msort.check.inuse import InUseCheck
 
-confirm = lambda m: raw_input('{0} [Y/n]: '.format(m)).lower() in ('y', '')
+try:     get_input = raw_input
+except:  get_input = input
+finally: confirm = lambda m: get_input('{0} [Y/n]: '.format(m)).lower() in ('y', '')
 
 def main():
     """ Parse command line arguments and run the sorter
