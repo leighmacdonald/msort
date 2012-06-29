@@ -47,9 +47,11 @@ class DirectoryScanner(object):
                 try:
                     check_result = checker(section, file_name)
                 except CheckSkip as err:
+                    # Skip raised, stop checking this path and move on to the next
                     self.log.warn(err)
                     break
                 except CheckError as err:
+                    # Raise the error unless the general->error_continue config setting is true
                     if not self.conf.getboolean('general', 'error_continue'):
                         raise err
                     self.log.error(err)
@@ -66,7 +68,7 @@ _ntuple_diskusage = namedtuple('usage', 'total used free')
 def disk_usage(path):
     """Return disk usage statistics about the given path.
 
-    Returned valus is a named tuple with attributes 'total', 'used' and
+    Returned value is a named tuple with attributes 'total', 'used' and
     'free', which are the amount of total, used and free space, in bytes.
 
     :param path: Path to get stats for
@@ -95,14 +97,16 @@ def fmt_size(num_bytes):
     return "%3.1f%s" % (num_bytes, 'TB')
 
 def dir_size(folder):
-    """ Recursivly calculate the size of a directory
+    """ Recursively calculate the size of a path.
+
+    This can be a directory or file
 
     :param folder: Path to get the size of
     :type folder: str
     :return: Total number of bytes counted
     :rtype: int
     """
-    #total_size = getsize(folder) // 4096?
+    if isfile(folder): return getsize(folder)
     total_size = 0
     for item in listdir(folder):
         item_path = join(folder, item)
