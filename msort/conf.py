@@ -1,4 +1,7 @@
-from ConfigParser import RawConfigParser
+try:
+    from configparser import RawConfigParser
+except ImportError:
+    from ConfigParser import RawConfigParser
 from os.path import expanduser, join, exists
 from re import IGNORECASE, compile as rxcompile
 
@@ -173,6 +176,9 @@ class Config(object):
             return self.conf.getboolean(section, 'sorted')
         except Exception:
             return False
+
+    def getboolean(self, section, option):
+        return self.conf.getboolean(section, option)
 
 DEFAULT_CONF_FILE = """[general]
 basepath = /mnt/storage

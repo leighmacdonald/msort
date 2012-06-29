@@ -3,7 +3,7 @@ from os.path import join, dirname, exists
 from os import makedirs
 from shutil import rmtree
 from msort import filesystem
-from msort.check import CheckError, CheckSkip
+from msort.check import CheckError, CheckSkip, BaseCheck
 from msort.check.empty import EmptyCheck
 from msort.check.inuse import InUseCheck
 
@@ -29,8 +29,10 @@ class FilesystemTest(unittest.TestCase):
     def test_skip_raised(self):
         from init_test_config import conf
         section = 'TEST'
-        conf.conf.add_section(section)
-        conf.conf.set(section, 'source', self.dir_root)
+        try:
+            conf.conf.add_section(section)
+            conf.conf.set(section, 'source', self.dir_root)
+        except: pass
         ds = filesystem.DirectoryScanner(conf)
         ds.registerChecker(InUseCheck(conf))
         ds.registerChecker(EmptyCheck(conf))
@@ -41,7 +43,33 @@ class FilesystemTest(unittest.TestCase):
             self.assertEqual(1, len(res))
 
     def test_error_raised(self):
-        pass
+        class DummyCheck(BaseCheck):
+            def __call__(self, section, path):
+                raise CheckError('Error checking!')
+        from init_test_config import conf
+        section = 'TEST'
+        try:
+            conf.conf.add_section(section)
+            conf.conf.set(section, 'source', self.dir_root)
+        except: pass
+        ds = filesystem.DirectoryScanner(conf)
+        ds.registerChecker(DummyCheck(conf))
+        self.assertRaises(CheckError, ds.find, section)
+
+    def test_error_skipped(self):
+        class DummyCheck(BaseCheck):
+            def __call__(self, section, path):
+                raise CheckError('Error checking!')
+        from init_test_config import conf
+        section = 'TEST'
+        try:
+            conf.conf.add_section(section)
+        except: pass
+        conf.conf.set(section, 'source', self.dir_root)
+        conf.conf.set('general', 'error_continue', 'true')
+        ds = filesystem.DirectoryScanner(conf)
+        ds.registerChecker(DummyCheck(conf))
+        self.assertFalse(ds.find(section))
 
     def test_dir_size(self):
         size = filesystem.dir_size('./')
@@ -59,5 +87,4 @@ class FilesystemTest(unittest.TestCase):
         self.assertEqual('1.0TB', filesystem.fmt_size(1024**4))
         self.assertEqual('1024.0TB', filesystem.fmt_size(1024**5))
 
-if __name__ == '__main__':
-    unittest.main()
+if __name__ == '__main__': unittest.main()

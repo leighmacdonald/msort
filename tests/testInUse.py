@@ -27,5 +27,4 @@ class TestInUseScanner(unittest.TestCase):
         if exists(file_path):
             remove(file_path)
 
-if __name__ == '__main__':
-    unittest.main()
+if __name__ == '__main__': unittest.main()

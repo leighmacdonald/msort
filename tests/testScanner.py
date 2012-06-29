@@ -92,5 +92,4 @@ class TestScanner(unittest.TestCase):
         scanner.registerChecker(DummyCheck(conf))
         self.assertTrue(len(scanner._checks) == 2)
 
-if __name__ == '__main__':
-    unittest.main()
+if __name__ == '__main__': unittest.main()

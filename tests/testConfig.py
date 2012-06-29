@@ -53,7 +53,7 @@ class ConfigTest(unittest.TestCase):
         self.assertRaises(ValueError, self.conf.getRuleList, 'INVALID')
         
     def testFilteredSections(self):
-        self.assertEqual(['TV', 'DVDR', 'XVID'], list(self.conf.filteredSections()))
+        self.assertTrue(all([s in ('TV', 'XVID', 'DVDR') for s in self.conf.filteredSections()]))
 
     def testGetNextRxId(self):
         self.assertEqual('rx3', self.conf.getNextRxId('TV'))
@@ -63,5 +63,4 @@ class ConfigTest(unittest.TestCase):
         self.assertFalse(self.conf.isSorted('BAD_TEST'))
 
 
-if __name__ == '__main__':
-    unittest.main()
+if __name__ == '__main__': unittest.main()

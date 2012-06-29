@@ -41,8 +41,5 @@ class TestOperations(unittest.TestCase):
         do()
         self.assertFalse(exists(self.dir_root))
 
-    def testDeleteNonExisting(self):
-        self.assertRaises(OperationError, DeleteOperation('bs.path'))
 
-if __name__ == '__main__':
-    unittest.main()
+if __name__ == '__main__': unittest.main()

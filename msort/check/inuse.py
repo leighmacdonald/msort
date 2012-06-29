@@ -20,7 +20,7 @@ class InUseCheck(BaseCheck):
     def __call__(self, section, path):
         t = time()
         if t - self.cache_update > self.cache_ttl:
-            self.lsof_cache = call_output('lsof')
+            self.lsof_cache = str(call_output('lsof'))
             self.cache_update = time()
         if path in self.lsof_cache:
             raise CheckSkip('Detected In-Use path, Skipping: {0}'.format(path))
