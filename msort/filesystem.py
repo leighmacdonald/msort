@@ -48,7 +48,7 @@ class DirectoryScanner(object):
                     check_result = checker(section, file_name)
                 except CheckSkip as err:
                     self.log.warn(err)
-                    continue
+                    break
                 except CheckError as err:
                     if not self.conf.getboolean('general', 'error_continue'):
                         raise err
