@@ -2,8 +2,8 @@ from os import remove
 from os.path import isfile, isdir
 from shutil import move, rmtree
 
-from msort.log import getLogger
 from msort import MSortError
+from msort.log import getLogger
 from msort.filesystem import dir_size, fmt_size
 
 class OperationError(MSortError):

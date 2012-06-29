@@ -39,7 +39,7 @@ setup(
     author='Leigh MacDonald',
     author_email='leigh@cudd.li',
     url='https://msort.cudd.li/',
-    packages=['msort'],
+    packages=['msort', 'msort.check'],
     scripts=['mediasort.py'],
     cmdclass = { 'test': TestCommand },
     classifiers=[
