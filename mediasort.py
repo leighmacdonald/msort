@@ -51,7 +51,7 @@ def main():
         total_changes = sum([len(x) for x in changes.values()])
         log.info('Found {0} total changes to be executed'.format(total_changes))
         if options.autocommit or confirm('Apply changes found ({0})?'.format(total_changes)):
-            for section, operations in changes.iteritems():
+            for section, operations in changes.items():
                 for oper in operations:
                     log.info('Executing: {0}'.format(str(oper)))
     except ConfigError as err:
