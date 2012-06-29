@@ -1,42 +1,27 @@
-msort
+msort (mediasort)
 =====================
 
-Simple tool for sorting scene release media folders into grouped subfolders.
-Releases are filtered into groups based on regex matching. These groups defined where
-to move releases to.
+Media sort is meant to be used as a tool that will sort folders and files matching
+certain specifications, into logical folder trees. Its currently tailored to TV and
+Movie formats, but there is no restrictions on this and its quite flexible.
 
-TV shows can get auto sorted into subgroups based on the show names.
-eg. mv Top.Gear.17x06.HDTV.XviD-FoV /TV/Top.Gear
+Example of what can be accolplish:
 
-Demo
-==========
-
-    [user@host ~]$ sort.py
-    INFO Scanning /mnt/storage/TV
-    INFO Scanning /mnt/storage/XVID
-    INFO mv /mnt/storage/TV/National.Geographic.Taboo.Misfits.HDTV.XviD-B1LTV /mnt/storage/TV/National.Geographic
+- TV shows can get auto sorted into subgroups based on the show names. eg. mv Top.Gear.17x06.HDTV.XviD-FoV /TV/Top.Gear
+- Detect empty files and folders and mark them for deletion
+- Check if a file is in use before trying to perform a operation to prevent files being altered that are being used by other processes.
 
 
 Installation
 ===============
 
-Please note this tool requires python 3 to run. There is no python2 version, although back porting
-would be trivial for the current codebase.
+Installation is carried out using the standard distutils formula as shown below.
 
-    [user@host msort-1.0]$ python3 setup.py install
+    [root@host msort]# python setup.py install
     running install
-    running build
-    running build_py
-    copying msort/__init__.py -> build/lib/msort
-    running build_scripts
-    running install_lib
-    copying build/lib/msort/__init__.py -> /home/leigh/altroot/lib/python3.2/site-packages/msort
-    running install_scripts
-    changing mode of /home/leigh/altroot/bin/sort.py to 755
-    running install_egg_info
-    Removing /home/leigh/altroot/lib/python3.2/site-packages/msort-1.1-py3.2.egg-info
+    <snip>
     Writing /home/leigh/altroot/lib/python3.2/site-packages/msort-1.1-py3.2.egg-info
-    [leigh@ws msort]$
+    [root@ws msort]#
 
 Configuration
 =======================
@@ -44,65 +29,69 @@ Configuration
 All configuration options are stored in ~/.msort.conf. By default this file will be automatically
 created for you if one doesn't already exist. The config format is the standard ".ini" style.
 
-Any section group that isn't named 'general', 'cleanup', or 'ignored' is considered a "section". Each
-section will have a few basic options to configure. The 2 most important of these is the
-"sorted" keyword, and the "rxN" keywords, where N is a unique, to the section, integer. If sorted is
-true, then matching folders will be sorted into subfolders defined by the (?P<name>) regex capture
-grouping. For example if i have the regex: '(?P<name>.+?).S\d{1,2}E\d{1,2}' and the folder name
+Any section group that isn't named 'general', 'cleanup', 'ignored' or 'logging' is considered a "section". Each
+section will have a few basic options to configure. The most important of these is the
+"sorted" keyword, the "rxN" keywords, where N is a unique, to the section, integer as well as the source and dest
+keywords. If sorted is enabled on the section, then matching folders will be sorted into subfolders defined by
+the (?P<name>) regex capture grouping. For example if i have the regex: '(?P<name>.+?).S\d{1,2}E\d{1,2}' and the folder name
 'Entourage.S08E06.HDTV.Custom.HebSub.XviD-Extinct'. The named capture group would return 'Entourage',
-which would be be used for the destination subfolder value. If sorted is false then no suborting is
-done and the fodler will simply be placed under the sections folder, which is defined by the sections
-'path' keyword. Path definitions are relative to the general basepath.
+which would be be used for the destination subfolder value. If sorted is false then no sub sorting is
+done and the folder will simply be placed under the sections destination, which is defined by the sections
+'dest' keyword. Path definitions should be absolute, but this isnt a strict requirement.
 
 
 Usage
 =======
 
-All command line options will override any options defined in the main configuration file. I
-recommend using the -t option liberally, as it will run through and tell you what it would have done
-without making any changes.
-
-    Usage: sort.py [options]
+    Usage: mediasort.py [options]
 
     Options:
-      -h, --help    show this help message and exit
-      -d, --debug   Enable debugging output level
-      -t, --test    Test the changes without actually doing them
-      -c, --commit  Commit the changes to disk
-      -e, --error   Continue on error
+      --version             show program's version number and exit
+      -h, --help            show this help message and exit
+      -d, --debug           Enable debugging output level
+      -y, --yes             Answer yes for all question, autocommit changes found
+      -c CONFIG_FILE, --config=CONFIG_FILE
+                            Set an alternate config file path
+
+And a trimmed down example of it being run:
+
+    [user@ws msort] $ mediasort.py -c /home/username/.msort.conf
+    Reading config: /home/username/.msort.conf
+    Loaded 1 rule sections and 5 rules.
+    Registered check instance: InUseCheck
+    Registered check instance: EmptyCheck
+    Registered check instance: ReleaseCheck
+    Starting scan of section TV: /export/storage/TV
+    <snip>
+    Check matched: MoveOperation /export/storage/TV/RegularShow.s03e28.AccessDenied.mp4 /export/storage/TV/Regular.Show
+    Detected In-Use path, Skipping: /export/storage/TV/RegularShow.s03e29.MuscleMentor.mp4
+    Check matched: MoveOperation /export/storage/TV/the.bleak.old.shop.of.stuff.s01e01.hdtv.xvid-ftp.avi /export/storage/TV/The.Bleak.Old.Shop.Of.Stuff
+    Check matched: MoveOperation /export/storage/TV/the.daily.show.2012.03.01.hdtv.xvid-fqm.avi /export/storage/TV/The.Daily.Show
+    Found 100 total changes to be executed
+    Apply changes found (100)? [Y/n]: <enter>
+    Executing: MoveOperation /export/storage/TV/portlandia.s02e10.hdtv.xvid-fqm.avi /export/storage/TV/Portlandia
+    <snip>
+    Executing: MoveOperation /export/storage/TV/the.daily.show.2012.03.01.hdtv.xvid-fqm.avi /export/storage/TV/The.Daily.Show
 
 
 Tests
 ==========
 
-There is some decent test coverage for the code, however this is reliant on the newer unittest
-module only available in python 2.7/3.0+. The unittest2 module which backports some of the newer
-features may work, but i have no tested it at all. YMMV. Some test run output is below, it may help
-give you a idea of what this tool does.
+There is quite good test coverage currently. About 95%. Tests run under python2/3 ok. There
+is likly issues on windows for the tests though.
 
-    move cs_temp cs_tempcs_temp
-    DEBUG Set base path to: testdir
-    DEBUG Loaded 2 ignore patterns.
-    DEBUG Set base path to: testdir
-    INFO rmtree testdir/file.avi
-    INFO Created dir: testdir/DVDR
-    DEBUG Found parent of testdir/Feed.The.Fish.LIMITED.R2.PAL.DVDR-TARGET : testdir/DVDR
-    INFO Created dir: testdir/TV/Entourage
-    DEBUG Found parent of testdir/Entourage.S08E06.HDTV.Custom.HebSub.XviD-Extinct : testdir/TV/Entourage
-    INFO Created dir: testdir/TV/Top.Gear
-    DEBUG Found parent of testdir/Top.Gear.17x06.HDTV.XviD-FoV : testdir/TV/Top.Gear
-    INFO Created dir: testdir/XVID
-    DEBUG Found parent of testdir/TrollHunter.2010.LiMiTED.BDRip.XviD-NODLABS : testdir/XVID
-    INFO Created dir: testdir/XXX
-    DEBUG Found parent of testdir/Deep.Anal.Drilling.3.XXX.DVDRip.XviD-Jiggly : testdir/XXX
-    DEBUG Loaded 4 rule sections and 5 rules.
-    DEBUG Loaded 4 rule sections and 5 rules.
+    [user@ws msort] $ python setup.py test
+    <snip>
+    ----------------------------------------------------------------------
+    Ran 39 tests in 1.038s
+
+    OK
+    [user@ws msort] $
+
 
 
 TODO
 =======================
 
-* Add ability to check if a file/folder is in use before attempting to move it (eg. still downloading), this
-isn't very straightforward on Linux unfortunately.
 * Fetch media information (synopsis/rating/genre/posters/etc).
 * Auto detect type of media based on the name using external resources (imdb/tvrage/etc)
