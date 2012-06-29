@@ -44,9 +44,8 @@ def main():
         scanner.registerChecker(InUseCheck(conf))
         scanner.registerChecker(EmptyCheck(conf))
         scanner.registerChecker(ReleaseCheck(conf))
-        sections = conf.filteredSections()
         changes = {}
-        for section in sections:
+        for section in conf.filteredSections():
             changes[section] = scanner.find(section)
         total_changes = sum([len(x) for x in changes.values()])
         log.info('Found {0} total changes to be executed'.format(total_changes))
@@ -68,5 +67,4 @@ def main():
         log.info('With the speed of an African Swallow')
     return ret_code
 
-if __name__ == "__main__":
-    exit(main())
+if __name__ == "__main__": exit(main())
