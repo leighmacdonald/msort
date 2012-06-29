@@ -14,7 +14,7 @@ class BaseOperation(object):
         self.log = getLogger(__name__)
 
     def __call__(self):
-        raise NotImplemented('__call__ not implemented in {0}'.format(self.__str__()))
+        raise NotImplementedError('__call__ not implemented in {0}'.format(self.__str__()))
 
     def __str__(self):
         return self.__class__.__name__

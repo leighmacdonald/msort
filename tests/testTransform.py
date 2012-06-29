@@ -8,6 +8,7 @@ class TransformTest(unittest.TestCase):
 
     def test_ucfirst(self):
         self.assertEqual('Lower', transform.ucfirst('lower'))
+        self.assertEqual('', transform.ucfirst(''))
 
     def test_upperwords(self):
         self.assertEqual('Upper.Words', transform.upperwords('upper.words'))

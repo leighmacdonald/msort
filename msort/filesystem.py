@@ -48,7 +48,7 @@ class DirectoryScanner(object):
                     check_result = checker(section, file_name)
                 except CheckSkip as err:
                     self.log.warn(err)
-                    continue
+                    break
                 except CheckError as err:
                     if not self.conf.getboolean('general', 'error_continue'):
                         raise err
@@ -78,7 +78,7 @@ def disk_usage(path):
     free = st.f_bavail * st.f_frsize
     total = st.f_blocks * st.f_frsize
     used = (st.f_blocks - st.f_bfree) * st.f_frsize
-    return _ntuple_diskusage(fmt_size(total), fmt_size(used), fmt_size(free))
+    return _ntuple_diskusage(total, used, free)
 
 def fmt_size(num_bytes):
     """ Return a human readable version of the number of bytes supplied.
@@ -88,8 +88,8 @@ def fmt_size(num_bytes):
     :return: Human readable size
     :rtype: str
     """
-    for x in ('bytes','KB','MB','GB'):
-        if bytes < 1024.0:
+    for x in ['b','KB','MB','GB']:
+        if num_bytes < 1024.0:
             return "%3.1f%s" % (num_bytes, x)
         num_bytes /= 1024.0
     return "%3.1f%s" % (num_bytes, 'TB')
@@ -105,11 +105,11 @@ def dir_size(folder):
     #total_size = getsize(folder) // 4096?
     total_size = 0
     for item in listdir(folder):
-        itempath = join(folder, item)
-        if isfile(itempath):
-            total_size += getsize(itempath)
-        elif isdir(itempath):
-            total_size += dir_size(itempath)
+        item_path = join(folder, item)
+        if isfile(item_path):
+            total_size += getsize(item_path)
+        elif isdir(item_path):
+            total_size += dir_size(item_path)
     return total_size
 
 

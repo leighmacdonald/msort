@@ -5,8 +5,7 @@ def upperwords(word):
 def ucfirst(word):
     if word:
         if len(word) == 1: return word.upper()
-        elif len(word) >= 2: return word[0].upper() + word[1:]
-        else: return ''
+        else: return word[0].upper() + word[1:]
     else:
         return word
 
