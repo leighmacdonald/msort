@@ -1,5 +1,5 @@
-from os import remove
-from os.path import isfile, isdir
+from os import remove, makedirs
+from os.path import isfile, isdir, exists
 from shutil import move, rmtree
 
 from msort import MSortError
@@ -27,6 +27,8 @@ class MoveOperation(BaseOperation):
 
     def __call__(self):
         try:
+            if not exists(self.destination):
+                makedirs(self.destination)
             move(self.source, self.destination)
         except Exception as err:
             raise OperationError(err)

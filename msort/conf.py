@@ -1,7 +1,7 @@
 try:
-    from configparser import RawConfigParser
+    from configparser import ConfigParser
 except ImportError:
-    from ConfigParser import RawConfigParser
+    from ConfigParser import SafeConfigParser as ConfigParser
 from os.path import expanduser, join, exists
 from re import IGNORECASE, compile as rxcompile
 
@@ -13,7 +13,7 @@ class ConfigError(Exception):
     """
     pass
 
-class Config(RawConfigParser):
+class Config(ConfigParser):
     """Simple configuration class based on RawConfigParser which will
     load the config file and create one if it doesnt exist.
 
@@ -29,7 +29,7 @@ class Config(RawConfigParser):
         :param config_path: Location of the config file
         :type config_path: str
         """
-        RawConfigParser.__init__(self)
+        ConfigParser.__init__(self)
         self.log = getLogger(__name__)
         config_path = expanduser(config_path)
         if not exists(config_path):
