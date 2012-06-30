@@ -1,5 +1,7 @@
-from logging import StreamHandler, DEBUG, getLogger as realGetLogger, Formatter, INFO
-
+"""
+Module logging facilities. If the colorama module is found, colourized output will be used
+"""
+from logging import StreamHandler, getLogger as realGetLogger, Formatter, INFO
 
 try:
     from colorama import Fore, Back, init, Style
@@ -55,6 +57,8 @@ except:
 
 # Logging instance cache
 loggers = {}
+
+# Application wide log level
 log_level = INFO
 
 def getLogger(name=None, fmt='%(message)s'):

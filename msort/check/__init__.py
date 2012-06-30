@@ -1,5 +1,7 @@
+"""
+Base operation classes
+"""
 from msort.log import getLogger
-
 from msort import MSortError
 
 class CheckError(MSortError):

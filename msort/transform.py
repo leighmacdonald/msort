@@ -1,15 +1,33 @@
+"""
+String transformations used to try and normalize different naming schemes.
+"""
 import re
-def upperwords(word):
-    return '.'.join(map(ucfirst, word.split('.')))
+
+default_sep = '.'
+default_spacers = ('.', ' ', '_')
+
+def upperwords(word, sep=default_sep):
+    """ Return a string
+
+    :param sep:
+    :param word:
+    :type word:
+    :return:
+    :rtype:
+    """
+    return '.'.join(map(ucfirst, word.split(sep)))
 
 def ucfirst(word):
-    if word:
-        if len(word) == 1: return word.upper()
-        else: return word[0].upper() + word[1:]
-    else:
-        return word
+    """ Capitialize the first letter of the string given
 
-def cleanup(word, sep='.'):
+    :param word: String to capitalize
+    :type word: str
+    :return: Capitalized string
+    :rtype: str
+    """
+    return word.upper() if len(word) == 1 else word[0].upper() + word[1:] if word else word
+
+def cleanup(word, sep=default_sep):
     """ This function will take several steps to attempt to "clean" the input string to a
      more usable and uniform format.
 
@@ -50,7 +68,7 @@ def split_uc_words(words):
             tmp_word += c.upper()
         else:
             if i+1 <= size:
-                if c in ['.', ' ']:
+                if c in default_spacers:
                     new_words.append(tmp_word)
                     tmp_word = ''
                 elif words[i+1].isupper():

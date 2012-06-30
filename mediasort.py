@@ -13,13 +13,13 @@ Copyright (c) 2012, Leigh MacDonald
 License: MIT (see LICENSE for details)
 """
 from sys import exit
-from logging import basicConfig, DEBUG, INFO
+from logging import DEBUG, INFO
 from optparse import OptionParser
 
 from msort.conf import Config, ConfigError
 from msort.log import getLogger, setLevel
 from msort.filesystem import DirectoryScanner
-from msort.operation import OperationError, OperationManager
+from msort.operation import OperationManager
 from msort.check.empty import EmptyCheck
 from msort.check.release import ReleaseCheck
 from msort.check.inuse import InUseCheck
@@ -30,6 +30,13 @@ except:  get_input = input
 confirm = lambda m: get_input('{0} [Y/n]: '.format(m)).lower() in ('y', '')
 
 def parse_cli(args=None):
+    """ Parse command line arguments
+
+    :param args: Argument string
+    :type args: str
+    :return: options, args
+    :rtype: object, list
+    """
     parser = OptionParser(version='2.0')
     parser.add_option('-d', '--debug', dest="debug", action="store_true", default=False,
         help="Enable debugging output level")

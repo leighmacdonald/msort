@@ -1,3 +1,4 @@
+""" Confiuguration module """
 try:
     from configparser import ConfigParser
 except ImportError:

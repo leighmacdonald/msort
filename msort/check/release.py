@@ -1,5 +1,9 @@
+"""
+Module help filter based on release/folder/file names
+"""
 import re
 from os.path import basename, join
+
 from msort.check import BaseCheck
 from msort.operation import MoveOperation
 from msort.transform import cleanup

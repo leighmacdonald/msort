@@ -10,7 +10,6 @@ try:
     from os.path import walk
 except ImportError:
     from os import walk
-
 from distutils.core import setup, Command
 
 class TestCommand(Command):

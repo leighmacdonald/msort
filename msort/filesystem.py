@@ -1,6 +1,10 @@
+"""
+Provied capabilities related to the filesystem
+"""
 from collections import namedtuple
 from os import statvfs, listdir
 from os.path import join, getsize, isdir, isfile
+
 from msort.log import getLogger
 from msort.check import BaseCheck, CheckError, CheckSkip
 

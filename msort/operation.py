@@ -1,3 +1,6 @@
+"""
+Provides classes to perform actions against triggered files and folders
+"""
 from os import remove, makedirs
 from os.path import isfile, isdir, exists
 from shutil import move, rmtree
