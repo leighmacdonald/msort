@@ -83,6 +83,13 @@ class OperationManager(dict):
         self.cur_idx = 0
 
     def executeSection(self, section):
+        """ Perform all the operations under the section key provided
+
+        :param section: Section key
+        :type section: str
+        :return: list of errors that may have occured
+        :rtype: list
+        """
         for oper in self[section]:
             self.cur_idx +=1
             self.log.info('[{1}/{2}] {0}'.format(str(oper), self.cur_idx, len(self)))
@@ -94,12 +101,26 @@ class OperationManager(dict):
         return self.error_list
 
     def execute(self, sections=None):
+        """ Wrapper method to execute all the sections provided and return the overall
+        execution status. If no sections are provided all the sections will be executed.
+
+        :param sections: optional list of sections to map
+        :type sections: None, list
+        :return: Execution has errors status
+        :rtype: bool
+        """
         return not any(map(self.executeSection, sections if sections else self.keys()))
 
     def showErrors(self):
+        """ Display all the error messages. """
         self.log.error('There were {0} errors encountered while executing all operations:'.format(len(self.error_list)))
         for i, error in enumerate(self.error_list):
             self.log.error('[{0}] {1}'.format(i, error))
 
     def __len__(self):
+        """ Return the total numver of operations queued up for the dicts len
+
+        :return: Total operations queued
+        :rtype: int
+        """
         return sum([len(x) for x in self.values()])

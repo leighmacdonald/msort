@@ -1,2 +1,3 @@
+
 class MSortError(Exception):
     pass

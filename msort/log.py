@@ -1,4 +1,5 @@
-from logging import StreamHandler, DEBUG, getLogger as realGetLogger, Formatter
+from logging import StreamHandler, DEBUG, getLogger as realGetLogger, Formatter, INFO
+
 
 try:
     from colorama import Fore, Back, init, Style
@@ -29,6 +30,12 @@ try:
             except: return False
 
         def emit(self, record):
+            """ Write out a multi coloured log record based on the log level.
+
+            :param record: unformatted log message
+            :type record: LogRecord
+            :raises: KeyBoardError, SystemExit
+            """
             try:
                 message = self.format(record)
                 if not self.is_tty:
@@ -48,6 +55,7 @@ except:
 
 # Logging instance cache
 loggers = {}
+log_level = INFO
 
 def getLogger(name=None, fmt='%(message)s'):
     """ Get and initialize a colourised logging instance if the system supports
@@ -60,13 +68,26 @@ def getLogger(name=None, fmt='%(message)s'):
     :return: Logger instance
     :rtype: Logger
     """
-    global loggers
+    global loggers, log_level
 
     try: return loggers[name]
     except KeyError:
-        loggers[name] = realGetLogger(name)
+        logger = realGetLogger(name)
+        logger.setLevel(log_level)
         # Only enable colour if support was loaded properly
         handler = ColourStreamHandler() if has_colour else StreamHandler()
         handler.setFormatter(Formatter(fmt))
-        loggers[name].addHandler(handler)
-        return loggers[name]
+        logger.addHandler(handler)
+        loggers[name] = logger
+        return logger
+
+def setLevel(level):
+    """ Set the global log level
+
+    :param level: logging module log level to set
+    :type level: int
+    """
+    global log_level, loggers
+
+    [logger.setLevel(level) for logger in loggers.values()]
+    log_level = level

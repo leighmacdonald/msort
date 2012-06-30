@@ -17,7 +17,7 @@ from logging import basicConfig, DEBUG, INFO
 from optparse import OptionParser
 
 from msort.conf import Config, ConfigError
-from msort.log import getLogger
+from msort.log import getLogger, setLevel
 from msort.filesystem import DirectoryScanner
 from msort.operation import OperationError, OperationManager
 from msort.check.empty import EmptyCheck
@@ -58,7 +58,7 @@ def main():
     try:
         # Initialize the config file
         conf = Config(options.config_file)
-
+        setLevel(log_level)
         # Setup the scanner and register checkers to use
         scanner = DirectoryScanner(conf)
         scanner.registerChecker(InUseCheck(conf))
