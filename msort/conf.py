@@ -13,16 +13,13 @@ class ConfigError(Exception):
     """
     pass
 
-class Config(object):
+class Config(RawConfigParser):
     """Simple configuration class based on RawConfigParser which will
     load the config file and create one if it doesnt exist.
 
     It will also parse out the regex values into proper compiled regex
     instances."""
     skip = ('general', 'ignored', 'logging', 'cleanup')
-
-    # Static ConfigParser instance
-    conf = None
 
     def __init__(self, config_path="~/.msort.conf"):
         """ Initialize the configuration. If a existing one doesnt exit a new one will be created
@@ -32,15 +29,14 @@ class Config(object):
         :param config_path: Location of the config file
         :type config_path: str
         """
+        RawConfigParser.__init__(self)
         self.log = getLogger(__name__)
-        if not self.conf:
-            config_path = expanduser(config_path)
-            if not exists(config_path):
-                raise ConfigError('Invalid config file, doesnt exist: {0}'.format(config_path))
-            self.conf = RawConfigParser()
-            self.log.debug('Reading config: {0}'.format(config_path))
-            self.conf.read(config_path)
-            self._rules = self.parseRules()
+        config_path = expanduser(config_path)
+        if not exists(config_path):
+            raise ConfigError('Invalid config file, doesnt exist: {0}'.format(config_path))
+        self.log.debug('Reading config: {0}'.format(config_path))
+        self.read(config_path)
+        self._rules = self.parseRules()
 
     def getRules(self):
         """Return the loaded ruleset
@@ -61,9 +57,9 @@ class Config(object):
         for section in self.filteredSections():
             conf.append({
                 'name'   : section,
-                'source' : self.conf.get(section, 'source'),
-                'dest'   : self.conf.get(section, 'dest'),
-                'sorted' : self.conf.getboolean(section, 'sorted'),
+                'source' : self.get(section, 'source'),
+                'dest'   : self.get(section, 'dest'),
+                'sorted' : self.getboolean(section, 'sorted'),
                 'rx'     : self.getSectionRegex(section)
             })
         if conf:
@@ -81,8 +77,8 @@ class Config(object):
         :rtype: list
         """
         regexList = []
-        if self.conf.has_section(section):
-            for item, value in self._rxFilter(self.conf.items(section)):
+        if self.has_section(section):
+            for item, value in self._rxFilter(self.items(section)):
                 regexList.append(rxcompile(value, IGNORECASE))
         return regexList
 
@@ -101,7 +97,7 @@ class Config(object):
         :return: Filtered sections
         :rtype: check
         """
-        return filter(lambda s: not s in self.skip and self.sectionEnabled(s), self.conf.sections())
+        return filter(lambda s: not s in self.skip and self.sectionEnabled(s), self.sections())
 
     def sectionEnabled(self, section):
         """ Fetch and return the "enabled" status of the supplied section.
@@ -112,7 +108,7 @@ class Config(object):
         :rtype: bool
         """
         try:
-            return self.conf.getboolean(section, 'enabled')
+            return self.getboolean(section, 'enabled')
         except Exception as err:
             return True
 
@@ -126,7 +122,7 @@ class Config(object):
         :return: section regex key
         :rtype: string
         """
-        while 'rx{0}'.format(find_id) in [id for id, _ in self._rxFilter(self.conf.items(section))]: find_id += 1
+        while 'rx{0}'.format(find_id) in [id for id, _ in self._rxFilter(self.items(section))]: find_id += 1
         return 'rx{0}'.format(find_id)
 
     def getSafe(self, section, option, default=False):
@@ -139,8 +135,8 @@ class Config(object):
         :return: config value
         :rtype: string
         """
-        if self.conf.has_section(section) and self.conf.has_option(section, option):
-            return self.conf.get(section, option)
+        if self.has_section(section) and self.has_option(section, option):
+            return self.get(section, option)
         return default
 
     def addRule(self, section, rule):
@@ -159,26 +155,20 @@ class Config(object):
     def getRuleList(self, section):
         if not section in self.filteredSections():
             raise ValueError('Invalid section given')
-        secs = self._rxFilter(self.conf.items(section))
+        secs = self._rxFilter(self.items(section))
         return secs
 
-    def sections(self):
-        return self.conf.sections()
-
     def getSourcePath(self, section):
-        return self.conf.get(section, 'source')
+        return self.get(section, 'source')
 
     def getDestPath(self, section, filename=None):
-        return join(self.conf.get(section, 'dest'), filename if filename else '')
+        return join(self.get(section, 'dest'), filename if filename else '')
 
     def isSorted(self, section):
         try:
-            return self.conf.getboolean(section, 'sorted')
+            return self.getboolean(section, 'sorted')
         except Exception:
             return False
-
-    def getboolean(self, section, option):
-        return self.conf.getboolean(section, option)
 
 DEFAULT_CONF_FILE = """[general]
 basepath = /mnt/storage

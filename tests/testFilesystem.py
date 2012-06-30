@@ -3,11 +3,13 @@ from os.path import join, dirname, exists
 from os import makedirs
 from shutil import rmtree
 from msort import filesystem
-from msort.check import CheckError, CheckSkip, BaseCheck
+from msort.check import CheckError, BaseCheck
 from msort.check.empty import EmptyCheck
 from msort.check.inuse import InUseCheck
 
-
+class DummyCheck(BaseCheck):
+    def __call__(self, section, path):
+        raise CheckError('Error checking!')
 
 class FilesystemTest(unittest.TestCase):
     def setUp(self):
@@ -30,8 +32,8 @@ class FilesystemTest(unittest.TestCase):
         from init_test_config import conf
         section = 'TEST'
         try:
-            conf.conf.add_section(section)
-            conf.conf.set(section, 'source', self.dir_root)
+            conf.add_section(section)
+            conf.set(section, 'source', self.dir_root)
         except: pass
         ds = filesystem.DirectoryScanner(conf)
         ds.registerChecker(InUseCheck(conf))
@@ -43,30 +45,24 @@ class FilesystemTest(unittest.TestCase):
             self.assertEqual(1, len(res))
 
     def test_error_raised(self):
-        class DummyCheck(BaseCheck):
-            def __call__(self, section, path):
-                raise CheckError('Error checking!')
         from init_test_config import conf
         section = 'TEST'
         try:
-            conf.conf.add_section(section)
-            conf.conf.set(section, 'source', self.dir_root)
+            conf.add_section(section)
+            conf.set(section, 'source', self.dir_root)
         except: pass
         ds = filesystem.DirectoryScanner(conf)
         ds.registerChecker(DummyCheck(conf))
         self.assertRaises(CheckError, ds.find, section)
 
     def test_error_skipped(self):
-        class DummyCheck(BaseCheck):
-            def __call__(self, section, path):
-                raise CheckError('Error checking!')
         from init_test_config import conf
         section = 'TEST'
         try:
-            conf.conf.add_section(section)
+            conf.add_section(section)
         except: pass
-        conf.conf.set(section, 'source', self.dir_root)
-        conf.conf.set('general', 'error_continue', 'true')
+        conf.set(section, 'source', self.dir_root)
+        conf.set('general', 'error_continue', 'true')
         ds = filesystem.DirectoryScanner(conf)
         ds.registerChecker(DummyCheck(conf))
         self.assertFalse(ds.find(section))
@@ -77,7 +73,7 @@ class FilesystemTest(unittest.TestCase):
 
     def test_disk_usage(self):
         usage = filesystem.disk_usage('/')
-        self.assertTrue(usage.total == usage.used + usage.free, usage.total)
+        self.assertTrue(usage.total == usage.used + usage.free, '{0}:{1}'.format(usage.total ,usage.used + usage.free))
 
     def test_fmt_size(self):
         self.assertEqual('1.0b', filesystem.fmt_size(1))
