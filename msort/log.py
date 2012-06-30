@@ -46,6 +46,9 @@ try:
 except:
     has_colour = False
 
+# Logging instance cache
+loggers = {}
+
 def getLogger(name=None, fmt='%(message)s'):
     """ Get and initialize a colourised logging instance if the system supports
     it as defined by the log.has_colour
@@ -57,10 +60,13 @@ def getLogger(name=None, fmt='%(message)s'):
     :return: Logger instance
     :rtype: Logger
     """
-    log = realGetLogger(name)
-    # Only enable colour if support was loaded properly
-    handler = ColourStreamHandler() if has_colour else StreamHandler()
-    handler.setFormatter(Formatter(fmt))
-    log.addHandler(handler)
-    log.propagate = 0 # Don't bubble up to the root logger
-    return log
+    global loggers
+
+    try: return loggers[name]
+    except KeyError:
+        loggers[name] = realGetLogger(name)
+        # Only enable colour if support was loaded properly
+        handler = ColourStreamHandler() if has_colour else StreamHandler()
+        handler.setFormatter(Formatter(fmt))
+        loggers[name].addHandler(handler)
+        return loggers[name]
