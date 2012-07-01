@@ -1,17 +1,16 @@
-from os import makedirs, link, unlink
+from os import makedirs, link, unlink, utime
 from os.path import exists, join, dirname
 from shutil import rmtree
-from logging import basicConfig, DEBUG
 import unittest
 
 from init_test_config import conf
+
 
 from msort.filesystem import DirectoryScanner
 from msort.check import DummyCheck
 from msort.check.empty import EmptyCheck
 from msort.check.release import ReleaseCheck
-
-basicConfig(level=DEBUG)
+from msort.check.prune import Pruner
 
 class TestScanner(unittest.TestCase):
     def setUp(self):
@@ -20,7 +19,7 @@ class TestScanner(unittest.TestCase):
             'TV/Entourage.S08E06.HDTV.Custom.HebSub.XviD-Extinct',
             'TV/Bridezillas.S08E12.DSR.XviD-OMiCRON',
             'SRC_XVID/Not.Another.Not.Another.Movie.2011.HDRip.XVID.AC3.HQ.Hive-CM8',
-            'TV/History.of.ECW.1997.11.04.PDTV.XviD-W4F',
+            'TV/History.of.ECW/History.of.ECW.1997.11.04.HDTV.XviD-W4F',
             'TV/file.avi',
             'TV/NOVA.S39E16.480p.HDTV.x264-mSD.mkv',
             'TV/RegularShow.s03e16.ButtDial.mp4',
@@ -49,6 +48,7 @@ class TestScanner(unittest.TestCase):
                         fp.write(write_data)
             except Exception as err:
                 pass
+        utime(join(self.root_path, 'TV/History.of.ECW/History.of.ECW.1997.11.04.HDTV.XviD-W4F'), (0,0))
         try:
             link(join(self.root_path, 'TV/file.avi'), join(self.root_path, 'TV/file-link.avi'))
         except : pass
@@ -91,5 +91,13 @@ class TestScanner(unittest.TestCase):
         scanner.registerChecker(DummyCheck(conf))
         scanner.registerChecker(DummyCheck(conf))
         self.assertTrue(len(scanner._checks) == 2)
+
+    def testPruneCheck(self):
+        scanner = DirectoryScanner(conf)
+        scanner.registerChecker(Pruner(conf))
+        changes = []
+        for section in self.sections:
+            changes.extend(scanner.find(section))
+        self.assertEquals(len(changes), 1)
 
 if __name__ == '__main__': unittest.main()

@@ -143,7 +143,7 @@ class Path(str):
         :return: Age in seconds
         :rtype: int
         """
-        return stat(self).st_ctime
+        return stat(self).st_mtime
 
     @property
     def size(self):
@@ -156,6 +156,15 @@ class Path(str):
 
     @classmethod
     def join(cls, *args):
+        """ Do a os.path.join returning a Path instance
+
+        :param cls: Path
+        :type cls: Path
+        :param args: Path elements to join
+        :type args: str[]
+        :return: Path instance of the merged path
+        :rtype: Path
+        """
         return Path(join(*args))
 
 

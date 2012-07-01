@@ -31,6 +31,8 @@ class TestOperations(unittest.TestCase):
     def testMoveInvalid(self):
         op = MoveOperation('bs.path', 'another.bs.path')
         self.assertRaises(OperationError, op)
+        if exists('another.bs.path'):
+            rmtree('another.bs.path')
 
     def testDeleteFileOperation(self):
         DeleteOperation(self.file)()
