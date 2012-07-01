@@ -98,7 +98,8 @@ class Config(ConfigParser):
         :return: Filtered sections
         :rtype: check
         """
-        return filter(lambda s: not s in self.skip and self.sectionEnabled(s), self.sections())
+        return filter(lambda s: s in self.get('general', 'scan_sections').split(',')
+            and self.sectionEnabled(s), self.sections())
 
     def sectionEnabled(self, section):
         """ Fetch and return the "enabled" status of the supplied section.
@@ -154,8 +155,9 @@ class Config(ConfigParser):
         pass
 
     def getRuleList(self, section):
-        if not section in self.filteredSections():
-            raise ValueError('Invalid section given')
+
+        if not section in self.filteredSections() and not section == 'prune':
+            raise ValueError('Invalid section given: {0}'.format(section))
         secs = self._rxFilter(self.items(section))
         return secs
 

@@ -22,8 +22,7 @@ class ConfigTest(unittest.TestCase):
         self.assertRaises(ConfigError, Config, 'asdfasdf')
 
     def testParseRules(self):
-        self.assertEqual(len(self.conf.sections()) - len(self.conf.skip),
-                         len(self.conf.parseRules()))
+        self.assertEqual(3, len(self.conf.parseRules()))
 
     def testGetSafeOk(self):
         self.assertEqual('^\.(incomplete|lock|locked)', self.conf.getSafe('general','lock_pattern'))

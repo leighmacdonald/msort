@@ -2,7 +2,7 @@
 Provied capabilities related to the filesystem
 """
 from collections import namedtuple
-from os import statvfs, listdir
+from os import statvfs, listdir as reallistdir, stat
 from os.path import join, getsize, isdir, isfile
 
 from msort.log import getLogger
@@ -45,7 +45,7 @@ class DirectoryScanner(object):
         path = self.conf.getSourcePath(section)
         found = []
         self.log.warn('Starting scan of section {0}: {1}'.format(section, path))
-        for file_name in sorted([join(path, f) for f in listdir(path)]):
+        for file_name in sorted([Path(join(path, f)) for f in listdir(path)]):
             self.log.debug('Scanning file: {0}'.format(file_name))
             for checker in self._checks:
                 try:
@@ -62,8 +62,11 @@ class DirectoryScanner(object):
                     continue
                 else:
                     if check_result:
-                        self.log.info('Check matched: {0}'.format(check_result))
-                        found.append(check_result)
+                        if not type(check_result) == list:
+                            check_result = [check_result]
+                        for result in check_result:
+                            self.log.info('Check matched: {0}'.format(result))
+                            found.append(result)
                         break
         return found
 
@@ -119,6 +122,41 @@ def dir_size(folder):
         elif isdir(item_path):
             total_size += dir_size(item_path)
     return total_size
+
+def listdir(path):
+    """ Wrapper around os.listdir which returns Path objects instead of plain str's
+
+    :param path: path to scan
+    :type path: str
+    :return: List of paths
+    :rtype: Path[]
+    """
+    return (Path(p) for p in reallistdir(path)) if isdir(path) else [path]
+
+class Path(str):
+    """ Represents a filesystem path, adds a few helper properties """
+
+    @property
+    def age(self):
+        """ Get the age of the path
+
+        :return: Age in seconds
+        :rtype: int
+        """
+        return stat(self).st_ctime
+
+    @property
+    def size(self):
+        """ Get the size of the path
+
+        :return: Path size in bytes
+        :rtype: int
+        """
+        return dir_size(self)
+
+    @classmethod
+    def join(cls, *args):
+        return Path(join(*args))
 
 
 

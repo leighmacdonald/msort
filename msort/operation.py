@@ -127,3 +127,15 @@ class OperationManager(dict):
         :rtype: int
         """
         return sum([len(x) for x in self.values()])
+
+    def getType(self, operation_type):
+        """ Get all the operations matching the supplied Type
+
+        :param operation_type: Some type of BaseOperation
+        :type operation_type: BaseOperation
+        :return: Matching operations
+        :rtype: list
+        """
+        found = []
+        [found.extend(filter(lambda o: type(o) == operation_type, opers)) for opers in self.values()]
+        return found

@@ -18,13 +18,15 @@ from optparse import OptionParser
 
 from msort.conf import Config, ConfigError
 from msort.log import getLogger, setLevel
-from msort.filesystem import DirectoryScanner
-from msort.operation import OperationManager
+from msort.filesystem import DirectoryScanner, Path, fmt_size
+from msort.operation import OperationManager, DeleteOperation
 from msort.check.empty import EmptyCheck
 from msort.check.release import ReleaseCheck
 from msort.check.inuse import InUseCheck
+from msort.check.prune import Pruner
 
 # 3 doesnt have raw_input
+
 try:     get_input = raw_input
 except:  get_input = input
 confirm = lambda m: get_input('{0} [Y/n]: '.format(m)).lower() in ('y', '')
@@ -71,10 +73,14 @@ def main():
         scanner.registerChecker(InUseCheck(conf))
         scanner.registerChecker(EmptyCheck(conf))
         scanner.registerChecker(ReleaseCheck(conf))
+        if conf.sectionEnabled('prune'):
+            scanner.registerChecker(Pruner(conf))
         operation_mgr = OperationManager(conf.getboolean('general','error_continue'))
         for section in conf.filteredSections():
             operation_mgr[section] = scanner.find(section)
         log.info('Found {0} total changes to be executed'.format(len(operation_mgr)))
+        total_deleted = sum([op.source.size for op in operation_mgr.getType(DeleteOperation)])
+        log.info('Total pruned size to be deleted: {0}'.format(fmt_size(total_deleted)))
         if options.autocommit or confirm('Apply changes found ({0})?'.format(len(operation_mgr))):
             if operation_mgr.execute():
                 log.info('Completed all operations successfully! [{0}/{1}]'.format(cur_idx, len(operation_mgr)))
