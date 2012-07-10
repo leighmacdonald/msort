@@ -47,9 +47,6 @@ class ConfigTest(unittest.TestCase):
     def testGetRuleList(self):
         l = list(self.conf.getRuleList('TV'))
         self.assertEqual([('rx1', '(?P<name>.+?).S\\d{1,2}E\\d{1,2}'), ('rx2', '(?P<name>.+?).\\d{1,2}X\\d{2}')], l)
-
-    def testGetRuleListFail(self):
-        self.assertRaises(ValueError, self.conf.getRuleList, 'INVALID')
         
     def testFilteredSections(self):
         self.assertTrue(all([s in ('TV', 'XVID', 'DVDR') for s in self.conf.filteredSections()]))

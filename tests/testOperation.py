@@ -2,7 +2,7 @@ from os import makedirs, listdir
 from os.path import exists, join, dirname
 from shutil import rmtree
 import unittest
-from msort.operation import MoveOperation, DeleteOperation, BaseOperation, OperationError
+from msort.operation import MoveOperation, DeleteOperation, BaseOperation, OperationError, MoveContentsOperation
 
 class TestOperations(unittest.TestCase):
     def setUp(self):
@@ -10,6 +10,14 @@ class TestOperations(unittest.TestCase):
             self.dir_root = join(dirname(__file__), 'test_root')
             self.folder = join(self.dir_root, 'test.folder')
             makedirs(self.folder)
+            dirs = ['TV/The.Old.Guys.S01.DVDRip.XviD-BTN',
+                    'TV/The.Old.Guys.S01.DVDRip.XviD-BTN/The.Old.Guys.S01E01.DVDRip.XviD-BTN',
+                    'TV/The.Old.Guys.S01.DVDRip.XviD-BTN/The.Old.Guys.S01E02.DVDRip.XviD-BTN',
+                    'TV/The.Old.Guys.S01.DVDRip.XviD-BTN/The.Old.Guys.S01E03.DVDRip.XviD-BTN',
+                    'TV/The.Old.Guys.S01.DVDRip.XviD-BTN/The.Old.Guys.S01E04.DVDRip.XviD-BTN',
+                    'TV/The.Old.Guys.S01.DVDRip.XviD-BTN/The.Old.Guys.S01E05.DVDRip.XviD-BTN']
+            for d in dirs:
+                makedirs(join(self.dir_root,d))
             self.file = join(self.dir_root, 'test.file.avi')
             with open(self.file, 'w') as fp: fp.write('x'*1000)
         except: pass
@@ -42,6 +50,15 @@ class TestOperations(unittest.TestCase):
         do = DeleteOperation(self.dir_root)
         do()
         self.assertFalse(exists(self.dir_root))
+
+    def testMoveContents(self):
+        src = join(self.dir_root,'TV','The.Old.Guys.S01.DVDRip.XviD-BTN')
+        dest = join(self.dir_root, 'The.Old.Guys')
+        op = MoveContentsOperation(src, dest, False)
+        op()
+        self.assertFalse(exists(src))
+        self.assertEqual(5, len(listdir(dest)))
+
 
 
 if __name__ == '__main__': unittest.main()

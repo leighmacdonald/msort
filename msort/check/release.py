@@ -5,7 +5,7 @@ import re
 from os.path import basename, join
 
 from msort.check import BaseCheck
-from msort.operation import MoveOperation
+from msort.operation import MoveOperation, MoveContentsOperation
 from msort.transform import cleanup
 
 class ReleaseCheck(BaseCheck):
@@ -13,7 +13,6 @@ class ReleaseCheck(BaseCheck):
     This check will do matching against release names folders and the regex rules
     defined in the config.
     """
-
     _rules = {}
     _seasons = []
 
@@ -31,10 +30,15 @@ class ReleaseCheck(BaseCheck):
                 return oper
 
     def getSeasonMatch(self,section, path):
-        sort_seasons = self.conf.getboolean(section, 'sort_seasons', fallback=False)
-        is_season = self.isSeason(path) if sort_seasons else False
+        if not self.conf.getboolean(section, 'sort_seasons', fallback=False):
+            return False
+        is_season = self.isSeason(path)
         if is_season:
-            raise Exception('Found season!: {0}'.format(path) )
+            full_name = is_season.groupdict()['name']
+            parsed_name = cleanup(basename(full_name))
+            dest = self.conf.getDestPath(section, parsed_name)
+            oper = MoveContentsOperation(path, dest)
+            return oper
 
     def getReleaseMatch(self, section, path):
         for pattern in self._rules[section]:

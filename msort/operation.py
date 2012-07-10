@@ -1,8 +1,8 @@
 """
 Provides classes to perform actions against triggered files and folders
 """
-from os import remove, makedirs
-from os.path import isfile, isdir, exists
+from os import remove, makedirs, listdir
+from os.path import isfile, isdir, exists, join
 from shutil import move, rmtree
 
 from msort import MSortError
@@ -28,14 +28,15 @@ class BaseOperation(object):
 class MoveOperation(BaseOperation):
     """ Used to move files from one directory to another"""
 
-    def __init__(self, source, destination):
+    def __init__(self, source, destination, create_dest=True):
         BaseOperation.__init__(self)
         self.source = source
         self.destination = destination
+        self.create_dest = create_dest
 
     def __call__(self):
         try:
-            if not exists(self.destination):
+            if self.create_dest and not exists(self.destination):
                 makedirs(self.destination)
             move(self.source, self.destination)
         except Exception as err:
@@ -43,6 +44,27 @@ class MoveOperation(BaseOperation):
 
     def __str__(self):
         return '{0} {1} {2}'.format(self.__class__.__name__, self.source, self.destination)
+
+class MoveContentsOperation(MoveOperation):
+    def __init__(self, source, destination, create_dest=False):
+        MoveOperation.__init__(self, source, destination, create_dest)
+
+    def __call__(self):
+        ops = self._findOperations()
+        for oper in ops:
+            oper()
+
+
+    def _findOperations(self):
+        ops = []
+        dir_list = listdir(self.source)
+        dir_list.sort()
+        for file_name in dir_list:
+            src_full = join(self.source, file_name)
+            dest_full = join(self.destination, file_name)
+            ops.append(MoveOperation(src_full, dest_full, self.create_dest))
+        ops.append(DeleteOperation(self.source))
+        return ops
 
 class DeleteOperation(BaseOperation):
     """ Used to delete a path from the filesystem """
@@ -63,15 +85,15 @@ class DeleteOperation(BaseOperation):
         """
         if isdir(self.source):
             rmtree(self.source)
-            self.log.info('Removed directory: {0}'.format(self.source))
+            self.log.debug('Removed directory: {0}'.format(self.source))
         elif isfile(self.source):
             remove(self.source)
-            self.log.info('Removed file: {0}'.format(self.source))
+            self.log.debug('Removed file: {0}'.format(self.source))
 
     def __str__(self):
         if self.size == None:
             self.size = dir_size(self.source)
-        return '{0} ({1}) {2}'.format(fmt_size(self.size), self.__class__.__name__, self.source)
+        return 'Delete ({0}) {1}'.format(fmt_size(self.size), self.source)
 
 class OperationManager(dict):
     """
@@ -137,5 +159,17 @@ class OperationManager(dict):
         :rtype: list
         """
         found = []
-        [found.extend(filter(lambda o: type(o) == operation_type, opers)) for opers in self.values()]
+        [found.extend(filterType(opers, operation_type)) for opers in self.values()]
         return found
+
+def filterType(operations, oper_type):
+    """ Get the sequence items matching the type supplied
+
+    :param operations:
+    :type operations:
+    :param oper_type:
+    :type oper_type:
+    :return:
+    :rtype:
+    """
+    return filter(lambda o: type(o) == oper_type,  operations)

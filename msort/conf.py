@@ -1,8 +1,8 @@
 """ Confiuguration module """
 try:
-    from configparser import ConfigParser
+    from configparser import ConfigParser, NoOptionError, NoSectionError
 except ImportError:
-    from ConfigParser import SafeConfigParser as ConfigParser
+    from ConfigParser import SafeConfigParser as ConfigParser, NoOptionError, NoSectionError
 from os.path import expanduser, join, exists
 from re import IGNORECASE, compile as rxcompile
 
@@ -155,11 +155,7 @@ class Config(ConfigParser):
         pass
 
     def getRuleList(self, section):
-
-        if not section in self.filteredSections() and not section == 'prune':
-            raise ValueError('Invalid section given: {0}'.format(section))
-        secs = self._rxFilter(self.items(section))
-        return secs
+        return self._rxFilter(self.items(section))
 
     def getSourcePath(self, section):
         return self.get(section, 'source')
@@ -167,11 +163,11 @@ class Config(ConfigParser):
     def getDestPath(self, section, filename=None):
         return join(self.get(section, 'dest'), filename if filename else '')
 
-    def isSorted(self, section):
+    def isSorted(self, section, default=False):
         try:
             return self.getboolean(section, 'sorted')
         except Exception:
-            return False
+            return default
 
 DEFAULT_CONF_FILE = """[general]
 basepath = /mnt/storage
