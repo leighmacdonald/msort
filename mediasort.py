@@ -18,12 +18,13 @@ from optparse import OptionParser
 
 from msort.conf import Config, ConfigError
 from msort.log import getLogger, setLevel
-from msort.filesystem import DirectoryScanner, Path, fmt_size
+from msort.filesystem import DirectoryScanner, fmt_size
 from msort.operation import OperationManager, DeleteOperation
 from msort.check.empty import EmptyCheck
 from msort.check.release import ReleaseCheck
 from msort.check.inuse import InUseCheck
 from msort.check.prune import Pruner
+from msort.check.age import AgeCheck
 
 # 3 doesnt have raw_input
 
@@ -70,6 +71,7 @@ def main():
         setLevel(log_level)
         # Setup the scanner and register checkers to use
         scanner = DirectoryScanner(conf)
+        scanner.registerChecker(AgeCheck(conf))
         scanner.registerChecker(InUseCheck(conf))
         scanner.registerChecker(EmptyCheck(conf))
         scanner.registerChecker(ReleaseCheck(conf))
