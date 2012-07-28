@@ -81,13 +81,17 @@ def main():
         for section in conf.filteredSections():
             operation_mgr[section] = scanner.find(section)
         log.info('Found {0} total changes to be executed'.format(len(operation_mgr)))
-        total_deleted = sum([op.source.size for op in operation_mgr.getType(DeleteOperation)])
-        log.info('Total pruned size to be deleted: {0}'.format(fmt_size(total_deleted)))
-        if options.autocommit or confirm('Apply changes found ({0})?'.format(len(operation_mgr))):
+        if not len(operation_mgr):
+            total_deleted = sum([op.source.size for op in operation_mgr.getType(DeleteOperation)])
+            log.info('Total pruned size to be deleted: {0}'.format(fmt_size(total_deleted)))
+        if len(operation_mgr) == 0:
+            log.info('No operations were found, Bye!')
+        elif options.autocommit or confirm('Apply changes found ({0})?'.format(len(operation_mgr))):
             if operation_mgr.execute():
-                log.info('Completed all operations successfully! [{0}/{1}]'.format(cur_idx, len(operation_mgr)))
+                log.info('Completed all operations successfully! [{1}]'.format(len(operation_mgr)))
             else:
                 operation_mgr.showErrors()
+                log.info('Errors were encountered, you should review them and make any changes deemed required.')
     except ConfigError as err:
         log.error('There was a configuration error:\n{0}'.format(err))
         ret_code = 3
@@ -98,15 +102,6 @@ def main():
         log.exception(err)
         log.error('Tis but a flesh wound.')
         ret_code = 1
-    else:
-        log.info('With the speed of an African Swallow')
-        if len(operation_mgr) and cur_idx == len(operation_mgr) and not errors_list:
-            log.info('All {0} operations completed successfully!'.format(len(operation_mgr)))
-        else:
-            if operation_mgr.error_list:
-                log.info('Errors were encountered, you should review them and make any changes deemed required.')
-            else:
-                log.info('No operations to perform were found.')
     return ret_code
 
 if __name__ == "__main__":
