@@ -30,7 +30,7 @@ class ReleaseCheck(BaseCheck):
                 return oper
 
     def getSeasonMatch(self,section, path):
-        if not self.conf.getboolean(section, 'sort_seasons', fallback=False):
+        if not self.conf.getboolean(section, 'sort_seasons'):
             return False
         is_season = self.isSeason(path)
         if is_season:
@@ -49,7 +49,8 @@ class ReleaseCheck(BaseCheck):
                         full_name = match.groupdict()['name']
                         parsed_name = cleanup(basename(full_name))
                         dest = self.conf.getDestPath(section, parsed_name)
-                        return MoveOperation(path, dest)
+                        full_dest = join(dest, basename(path))
+                        return MoveOperation(path, full_dest)
                     else:
                         dest = self.conf.getDestPath(section)
                         if join(dest, basename(path)) == path:

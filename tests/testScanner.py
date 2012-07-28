@@ -37,6 +37,8 @@ class TestScanner(unittest.TestCase):
             'TV/The Thick Of It S01',
             'TV/The Thick Of It S02',
             'TV/The.Thick.Of.It.Season.3.Xvid-BTN',
+            'TV/The.Thick.Of.It.Season.3.Xvid-BTN/The.Thick.Of.It.S01E01.DVDRip.XviD-BTN',
+            'TV/The.Thick.Of.It.Season.3.Xvid-BTN/The.Thick.Of.It.S01E02.DVDRip.XviD-BTN',
             'TV/The.Old.Guys.S01.DVDRip.XviD-BTN',
             'TV/The.Old.Guys.S01.DVDRip.XviD-BTN/The.Old.Guys.S01E01.DVDRip.XviD-BTN',
             'TV/The.Old.Guys.S01.DVDRip.XviD-BTN/The.Old.Guys.S01E02.DVDRip.XviD-BTN',

@@ -2,7 +2,7 @@
 Provides classes to perform actions against triggered files and folders
 """
 from os import remove, makedirs, listdir
-from os.path import isfile, isdir, exists, join
+from os.path import isfile, isdir, exists, join, dirname
 from shutil import move, rmtree
 
 from msort import MSortError
@@ -36,8 +36,9 @@ class MoveOperation(BaseOperation):
 
     def __call__(self):
         try:
-            if self.create_dest and not exists(self.destination):
-                makedirs(self.destination)
+            dest_dir = dirname(self.destination)
+            if self.create_dest and not exists(dest_dir):
+                makedirs(dest_dir)
             move(self.source, self.destination)
         except Exception as err:
             raise OperationError(err)
@@ -46,7 +47,7 @@ class MoveOperation(BaseOperation):
         return '{0} {1} {2}'.format(self.__class__.__name__, self.source, self.destination)
 
 class MoveContentsOperation(MoveOperation):
-    def __init__(self, source, destination, create_dest=False):
+    def __init__(self, source, destination, create_dest=True):
         MoveOperation.__init__(self, source, destination, create_dest)
 
     def __call__(self):
@@ -57,12 +58,15 @@ class MoveContentsOperation(MoveOperation):
 
     def _findOperations(self):
         ops = []
-        dir_list = listdir(self.source)
-        dir_list.sort()
-        for file_name in dir_list:
+        path_list = listdir(self.source)
+        path_list.sort()
+        for file_name in path_list:
             src_full = join(self.source, file_name)
-            dest_full = join(self.destination, file_name)
-            ops.append(MoveOperation(src_full, dest_full, self.create_dest))
+            if isfile(src_full):
+                dest_full = join(self.destination, file_name)
+                ops.append(MoveOperation(src_full, dest_full, self.create_dest))
+            else:
+                self.log.debug('ASD')
         ops.append(DeleteOperation(self.source))
         return ops
 
@@ -162,14 +166,14 @@ class OperationManager(dict):
         [found.extend(filterType(opers, operation_type)) for opers in self.values()]
         return found
 
-def filterType(operations, oper_type):
+def filterType(sequence, object_type):
     """ Get the sequence items matching the type supplied
 
-    :param operations:
-    :type operations:
-    :param oper_type:
-    :type oper_type:
-    :return:
-    :rtype:
+    :param sequence: Sequence of things to check
+    :type sequence: iter
+    :param object_type: class name to match against
+    :type object_type: any
+    :return: filter instance of matched sequence items
+    :rtype: filter
     """
-    return filter(lambda o: type(o) == oper_type,  operations)
+    return filter(lambda o: type(o) == object_type,  sequence)
