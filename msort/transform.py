@@ -81,6 +81,8 @@ def split_uc_words(words):
             else:
                 tmp_word += c
                 new_words.append(tmp_word)
+    if not new_words and tmp_word:
+        return [tmp_word]
     return new_words
 
 

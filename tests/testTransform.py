@@ -3,8 +3,10 @@ from msort import transform
 
 class TransformTest(unittest.TestCase):
     def test_splitucwords(self):
-        s = 'RegularShow'
-        self.assertEqual(['Regular','Show'], transform.split_uc_words(s))
+        self.assertEqual(['Regular','Show'], transform.split_uc_words('RegularShow'))
+
+    def test_splitucupperwords(self):
+        self.assertEqual(['NOVA'], transform.split_uc_words('NOVA'))
 
     def test_ucfirst(self):
         self.assertEqual('Lower', transform.ucfirst('lower'))
@@ -26,7 +28,7 @@ class TransformTest(unittest.TestCase):
         self.assertEqual('Regular.Show.S03e16.Butt.Dial.Mp4', res)
 
     def test_cleanup_upper(self):
-        res = transform.split_uc_words('NOVA.S39E16.480p.HDTV.x264-mSD.mkv')
+        res = transform.cleanup('NOVA')
         self.assertEqual('NOVA', res[0])
 
 if __name__ == '__main__':    unittest.main()
