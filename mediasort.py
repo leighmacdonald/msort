@@ -88,7 +88,7 @@ def main():
             log.info('No operations were found, Bye!')
         elif options.autocommit or confirm('Apply changes found ({0})?'.format(len(operation_mgr))):
             if operation_mgr.execute():
-                log.info('Completed all operations successfully! [{1}]'.format(len(operation_mgr)))
+                log.info('Completed all operations successfully! [{0}]'.format(len(operation_mgr)))
             else:
                 operation_mgr.showErrors()
                 log.info('Errors were encountered, you should review them and make any changes deemed required.')

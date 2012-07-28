@@ -45,7 +45,7 @@ class DirectoryScanner(object):
         path = self.conf.getSourcePath(section)
         found = []
         self.log.warn('Starting scan of section {0}: {1}'.format(section, path))
-        for file_name in sorted([Path(join(path, f)) for f in listdir(path)]):
+        for file_name in reversed(sorted([Path(join(path, f)) for f in listdir(path)])):
             self.log.debug('Scanning file: {0}'.format(file_name))
             for checker in self._checks:
                 try:

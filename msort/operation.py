@@ -2,7 +2,7 @@
 Provides classes to perform actions against triggered files and folders
 """
 from os import remove, makedirs, listdir
-from os.path import isfile, isdir, exists, join, dirname
+from os.path import isfile, isdir, exists, join, dirname, basename
 from shutil import move, rmtree
 
 from msort import MSortError
@@ -55,18 +55,24 @@ class MoveContentsOperation(MoveOperation):
         for oper in ops:
             oper()
 
-
     def _findOperations(self):
         ops = []
         path_list = listdir(self.source)
         path_list.sort()
         for file_name in path_list:
             src_full = join(self.source, file_name)
+            dest_full = join(self.destination, file_name)
             if isfile(src_full):
-                dest_full = join(self.destination, file_name)
                 ops.append(MoveOperation(src_full, dest_full, self.create_dest))
-            else:
-                self.log.debug('ASD')
+            elif isdir(src_full):
+                sub_list = listdir(src_full)
+                sub_list.sort()
+                for file_name in sub_list:
+                    sub_src_full = join(src_full, file_name)
+                    src_folder_name = basename(dirname(sub_src_full))
+                    dest_full = join(self.destination, src_folder_name, file_name)
+                    if isfile(sub_src_full):
+                        ops.append(MoveOperation(sub_src_full, dest_full, self.create_dest))
         ops.append(DeleteOperation(self.source))
         return ops
 

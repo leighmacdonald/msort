@@ -9,6 +9,8 @@ class TestOperations(unittest.TestCase):
         try:
             self.dir_root = join(dirname(__file__), 'test_root')
             self.folder = join(self.dir_root, 'test.folder')
+            if exists(self.dir_root):
+                rmtree(self.dir_root)
             makedirs(self.folder)
             dirs = ['TV/The.Old.Guys.S01.DVDRip.XviD-BTN',
                     'TV/The.Old.Guys.S01.DVDRip.XviD-BTN/The.Old.Guys.S01E01.DVDRip.XviD-BTN',
@@ -16,11 +18,17 @@ class TestOperations(unittest.TestCase):
                     'TV/The.Old.Guys.S01.DVDRip.XviD-BTN/The.Old.Guys.S01E03.DVDRip.XviD-BTN',
                     'TV/The.Old.Guys.S01.DVDRip.XviD-BTN/The.Old.Guys.S01E04.DVDRip.XviD-BTN',
                     'TV/The.Old.Guys.S01.DVDRip.XviD-BTN/The.Old.Guys.S01E05.DVDRip.XviD-BTN']
-            for d in dirs:
-                makedirs(join(self.dir_root,d))
+            for i, d in enumerate(dirs):
+                dir_path = join(self.dir_root,d)
+                makedirs(dir_path)
+                if i > 0:
+                    with open(join(dir_path, '{0}.avi'.format(i)), 'w') as fp:
+                        fp.write('x'*1000)
             self.file = join(self.dir_root, 'test.file.avi')
             with open(self.file, 'w') as fp: fp.write('x'*1000)
-        except: pass
+        except Exception as err:
+            errmsg = err.message
+            pass
 
     def testInvalidImplementation(self):
         self.assertRaises(NotImplementedError, BaseOperation())
@@ -53,8 +61,8 @@ class TestOperations(unittest.TestCase):
 
     def testMoveContents(self):
         src = join(self.dir_root,'TV','The.Old.Guys.S01.DVDRip.XviD-BTN')
-        dest = join(self.dir_root, 'The.Old.Guys')
-        op = MoveContentsOperation(src, dest, False)
+        dest = join(self.dir_root, 'TV', 'The.Old.Guys')
+        op = MoveContentsOperation(src, dest)
         op()
         self.assertFalse(exists(src))
         self.assertEqual(5, len(listdir(dest)))
