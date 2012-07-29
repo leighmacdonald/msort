@@ -7,15 +7,17 @@ default_sep = '.'
 default_spacers = ('.', ' ', '_')
 
 def upperwords(word, sep=default_sep):
-    """ Return a string
+    """ Split a string by the seperator value and uppercase transform the first character
+    of each sequence item then joining the string again and returning it.
 
-    :param sep:
-    :param word:
-    :type word:
-    :return:
-    :rtype:
+    :param sep: String to operatre on
+    :type sep: str
+    :param word: Word seperator character
+    :type word: str
+    :return: Uppercased words string
+    :rtype: str
     """
-    return '.'.join(map(ucfirst, word.split(sep)))
+    return sep.join(map(ucfirst, word.split(sep)))
 
 def ucfirst(word):
     """ Capitialize the first letter of the string given
@@ -57,7 +59,7 @@ def split_uc_words(words):
     :param words: String of upper cased words to split eg. LongStringName
     :type words: string
     :return: List of words found eg: ['Long', 'String', 'Name']
-    :rtype: list
+    :rtype: str[]
     """
     size = len(words)-1
     new_words = []

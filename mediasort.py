@@ -27,7 +27,6 @@ from msort.check.prune import Pruner
 from msort.check.age import AgeCheck
 
 # 3 doesnt have raw_input
-
 try:     get_input = raw_input
 except:  get_input = input
 confirm = lambda m: get_input('{0} [Y/n]: '.format(m)).lower() in ('y', '')
@@ -63,8 +62,6 @@ def main():
     log_level = DEBUG if options.debug else INFO
     #basicConfig(level=log_level, format='%(message)s')
     ret_code = 0
-    cur_idx = 0
-    errors_list = []
     try:
         # Initialize the config file
         conf = Config(options.config_file)

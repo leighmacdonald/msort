@@ -2,7 +2,7 @@ from os import makedirs, listdir
 from os.path import exists, join, dirname
 from shutil import rmtree
 import unittest
-from msort.operation import MoveOperation, DeleteOperation, BaseOperation, OperationError, MoveContentsOperation
+from msort.operation import MoveOperation, DeleteOperation, BaseOperation, OperationError, MoveContentsOperation, OperationManager, filterType
 
 class TestOperations(unittest.TestCase):
     def setUp(self):
@@ -67,6 +67,61 @@ class TestOperations(unittest.TestCase):
         self.assertFalse(exists(src))
         self.assertEqual(5, len(listdir(dest)))
 
+class TestOperationsManager(unittest.TestCase):
+    def setUp(self):
+        self.opmgr = OperationManager()
+        self.opmgr_error_ok = OperationManager(True)
+        self.section = 'TV'
+        self.dir_root = join(dirname(__file__), 'test_root')
+        if exists(self.dir_root): rmtree(self.dir_root)
+        dirs = ['a', 'b', 'c']
+        for d in dirs:
+            makedirs(join(self.dir_root, d))
+
+
+    def testSize(self):
+        self.opmgr[self.section] = [
+            MoveOperation('a', 'b'),
+            DeleteOperation('a')
+        ]
+        self.assertEqual(2, len(self.opmgr))
+
+    def testGetType(self):
+        self.opmgr[self.section] = [
+            MoveOperation('a', 'b'),
+            MoveOperation('c', 'd'),
+            DeleteOperation('a')
+        ]
+        self.assertEqual(2, len(self.opmgr.getType(MoveOperation)))
+
+    def testFilterType(self):
+        self.assertEqual(2, len(filterType(
+            [ MoveOperation('a', 'b'), MoveOperation('c', 'd'), DeleteOperation('a') ],
+            MoveOperation))
+        )
+
+    def testExecuteOK(self):
+        src = join(self.dir_root, 'a')
+        dest = join(self.dir_root, 'aa')
+        self.opmgr[self.section] = [MoveOperation(src, dest)]
+        res = self.opmgr.execute()
+        self.assertTrue(res)
+        self.assertTrue(exists(dest))
+        self.assertFalse(exists(src))
+
+    def testExecuteErrorRaise(self):
+        src = join(self.dir_root, 'bb')
+        dest = join(self.dir_root, 'bbb')
+        self.opmgr[self.section] = [MoveOperation(src, dest)]
+        self.assertRaises(OperationError, self.opmgr.execute)
+
+    def testExecuteErrorSkip(self):
+        src = join(self.dir_root, 'bb')
+        dest = join(self.dir_root, 'bbb')
+        self.opmgr_error_ok[self.section] = [MoveOperation(src, dest)]
+        errors = self.opmgr_error_ok.executeSection(self.section)
+        self.assertEqual(1, len(errors))
+        self.opmgr_error_ok.showErrors()
 
 
 if __name__ == '__main__': unittest.main()

@@ -6,6 +6,9 @@ from time import time
 from msort.check import BaseCheck, CheckSkip
 
 class AgeCheck(BaseCheck):
+    """
+    A simple checker which will validate a file or folders age.
+    """
     def __call__(self, section, path):
         if self.conf.getboolean('minimum_age', 'enabled'):
             min_age = self.conf.getint('minimum_age', 'days') * 86400
